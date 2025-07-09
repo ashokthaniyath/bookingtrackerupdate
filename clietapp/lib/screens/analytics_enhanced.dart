@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import '../models/booking.dart';
 import '../models/room.dart';
-import '../models/payment.dart';
+import '../providers/resort_data_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
@@ -21,14 +21,9 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  List<Booking> bookings = [];
-  List<Room> rooms = [];
-  List<Payment> payments = [];
-
   @override
   void initState() {
     super.initState();
-    _loadData();
 
     // UI Enhancement: Initialize Fade Animation
     _animationController = AnimationController(
@@ -47,15 +42,7 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      bookings = Hive.box<Booking>('bookings').values.toList();
-      rooms = Hive.box<Room>('rooms').values.toList();
-      payments = Hive.box<Payment>('payments').values.toList();
-    });
-  }
-
-  List<BarChartGroupData> _getBookingsPerMonth() {
+  List<BarChartGroupData> _getBookingsPerMonth(List<Booking> bookings) {
     final now = DateTime.now();
     final data = <BarChartGroupData>[];
 
@@ -89,7 +76,7 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
     return data;
   }
 
-  List<PieChartSectionData> _getRoomOccupancy() {
+  List<PieChartSectionData> _getRoomOccupancy(List<Room> rooms) {
     int occupied = rooms
         .where((r) => r.status.toLowerCase() == 'occupied')
         .length;
@@ -172,7 +159,7 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
     ];
   }
 
-  List<Widget> _buildPieChartLegend() {
+  List<Widget> _buildPieChartLegend(List<Room> rooms) {
     int occupied = rooms
         .where((r) => r.status.toLowerCase() == 'occupied')
         .length;
@@ -223,7 +210,7 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
     );
   }
 
-  List<FlSpot> _getRevenueTrend() {
+  List<FlSpot> _getRevenueTrend(List<Booking> bookings) {
     final now = DateTime.now();
     final months = List.generate(
       6,
@@ -249,7 +236,7 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
     );
   }
 
-  double _getOccupancyRate() {
+  double _getOccupancyRate(List<Room> rooms) {
     if (rooms.isEmpty) return 0.0;
     final occupied = rooms
         .where((r) => r.status.toLowerCase() == 'occupied')
@@ -280,469 +267,518 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF87CEEB), // Sky blue
-            Color(0xFFFFFFFF), // White
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.menu, color: Color(0xFF1E3A8A)),
-              onPressed: () => Scaffold.of(context).openDrawer(),
+    // Data Flow: Use Consumer to listen to provider changes for real-time analytics
+    return Consumer<ResortDataProvider>(
+      builder: (context, provider, child) {
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF87CEEB), // Sky blue
+                Color(0xFFFFFFFF), // White
+              ],
             ),
           ),
-          title: Text(
-            'Analytics',
-            style: GoogleFonts.poppins(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF1E3A8A),
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Color(0xFF1E3A8A)),
-              onPressed: _loadData,
-            ),
-          ],
-        ),
-        body: FadeTransition(
-          opacity: _fadeAnimation,
-          child: CustomScrollView(
-            slivers: [
-              // Key Metrics Cards
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildMetricCard(
-                              'Occupancy Rate',
-                              '${_getOccupancyRate().toStringAsFixed(1)}%',
-                              Icons.hotel,
-                              const LinearGradient(
-                                colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                              ),
-                              _getOccupancyRate() > 80
-                                  ? 'High occupancy'
-                                  : _getOccupancyRate() > 50
-                                  ? 'Moderate occupancy'
-                                  : 'Low occupancy',
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildMetricCard(
-                              'Total Bookings',
-                              bookings.length.toString(),
-                              Icons.book_online,
-                              const LinearGradient(
-                                colors: [Color(0xFF14B8A6), Color(0xFF059669)],
-                              ),
-                              'All time',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildMetricCard(
-                              'Available Rooms',
-                              rooms
-                                  .where(
-                                    (r) =>
-                                        r.status.toLowerCase() == 'available',
-                                  )
-                                  .length
-                                  .toString(),
-                              Icons.bed,
-                              const LinearGradient(
-                                colors: [Color(0xFFEAB308), Color(0xFFD97706)],
-                              ),
-                              'Ready for booking',
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildMetricCard(
-                              'Revenue This Month',
-                              '₹${NumberFormat('#,##,###').format(bookings.where((b) => b.paymentStatus.toLowerCase() == 'paid' && b.checkIn.month == DateTime.now().month).length * 1500)}',
-                              Icons.trending_up,
-                              const LinearGradient(
-                                colors: [Color(0xFFF43F5E), Color(0xFFEC4899)],
-                              ),
-                              'Paid bookings',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu, color: Color(0xFF1E3A8A)),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
                 ),
               ),
-
-              // Charts Section
-              SliverToBoxAdapter(
-                child: AnimationLimiter(
-                  child: Column(
-                    children: AnimationConfiguration.toStaggeredList(
-                      duration: const Duration(milliseconds: 500),
-                      childAnimationBuilder: (widget) => SlideAnimation(
-                        horizontalOffset: 50.0,
-                        child: FadeInAnimation(child: widget),
+              title: Text(
+                'Analytics',
+                style: GoogleFonts.poppins(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E3A8A),
+                ),
+              ),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Color(0xFF1E3A8A)),
+                  onPressed: () {
+                    // Data is automatically updated via provider
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Data is synced in real-time!'),
                       ),
-                      children: [
-                        // Monthly Bookings Chart
-                        Container(
-                          margin: const EdgeInsets.all(20),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                offset: const Offset(0, 5),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    );
+                  },
+                ),
+              ],
+            ),
+            body: FadeTransition(
+              opacity: _fadeAnimation,
+              child: CustomScrollView(
+                slivers: [
+                  // Key Metrics Cards
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Row(
                             children: [
-                              Text(
-                                'Monthly Bookings Trend',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1E293B),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                height: 200,
-                                child: BarChart(
-                                  BarChartData(
-                                    alignment: BarChartAlignment.spaceAround,
-                                    maxY: bookings.isNotEmpty
-                                        ? _getBookingsPerMonth()
-                                                  .map(
-                                                    (e) => e.barRods.first.toY,
-                                                  )
-                                                  .reduce(
-                                                    (a, b) => a > b ? a : b,
-                                                  ) +
-                                              2
-                                        : 10,
-                                    barTouchData: BarTouchData(enabled: true),
-                                    titlesData: FlTitlesData(
-                                      leftTitles: const AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                        ),
-                                      ),
-                                      bottomTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          getTitlesWidget: (value, meta) {
-                                            final now = DateTime.now();
-                                            final month = DateTime(
-                                              now.year,
-                                              now.month - 5 + value.toInt(),
-                                              1,
-                                            );
-                                            return Text(
-                                              DateFormat('MMM').format(month),
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 12,
-                                                color: const Color(0xFF64748B),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      rightTitles: const AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: false,
-                                        ),
-                                      ),
-                                      topTitles: const AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: false,
-                                        ),
-                                      ),
-                                    ),
-                                    borderData: FlBorderData(show: false),
-                                    barGroups: _getBookingsPerMonth(),
-                                    gridData: const FlGridData(show: false),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Room Occupancy Pie Chart - FIXED LAYOUT
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 20),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                offset: const Offset(0, 5),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Room Status Distribution',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1E293B),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              // FIXED: Proper responsive layout for pie chart
-                              SizedBox(
-                                height: 250,
-                                child: Row(
-                                  children: [
-                                    // Pie chart - Fixed aspect ratio
-                                    Expanded(
-                                      flex: 3,
-                                      child: AspectRatio(
-                                        aspectRatio: 1.0,
-                                        child: PieChart(
-                                          PieChartData(
-                                            sections: _getRoomOccupancy(),
-                                            borderData: FlBorderData(
-                                              show: false,
-                                            ),
-                                            sectionsSpace: 2,
-                                            centerSpaceRadius: 40,
-                                            pieTouchData: PieTouchData(
-                                              enabled: false,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 20),
-                                    // Legend - Fixed layout
-                                    Expanded(
-                                      flex: 2,
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: _buildPieChartLegend(),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Revenue Trend Line Chart
-                        Container(
-                          margin: const EdgeInsets.all(20),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                offset: const Offset(0, 5),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Revenue Trend (₹ in thousands)',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1E293B),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                height: 200,
-                                child: LineChart(
-                                  LineChartData(
-                                    gridData: const FlGridData(show: true),
-                                    titlesData: FlTitlesData(
-                                      leftTitles: const AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                        ),
-                                      ),
-                                      bottomTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          getTitlesWidget: (value, meta) {
-                                            final now = DateTime.now();
-                                            final month = DateTime(
-                                              now.year,
-                                              now.month - 5 + value.toInt(),
-                                              1,
-                                            );
-                                            return Text(
-                                              DateFormat('MMM').format(month),
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 12,
-                                                color: const Color(0xFF64748B),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      rightTitles: const AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: false,
-                                        ),
-                                      ),
-                                      topTitles: const AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: false,
-                                        ),
-                                      ),
-                                    ),
-                                    borderData: FlBorderData(show: false),
-                                    lineBarsData: [
-                                      LineChartBarData(
-                                        spots: _getRevenueTrend(),
-                                        isCurved: true,
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            Color(0xFF1E3A8A),
-                                            Color(0xFF3B82F6),
-                                          ],
-                                        ),
-                                        barWidth: 4,
-                                        isStrokeCapRound: true,
-                                        dotData: const FlDotData(show: true),
-                                        belowBarData: BarAreaData(
-                                          show: true,
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              const Color(
-                                                0xFF1E3A8A,
-                                              ).withValues(alpha: 0.3),
-                                              const Color(
-                                                0xFF1E3A8A,
-                                              ).withValues(alpha: 0.1),
-                                            ],
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                          ),
-                                        ),
-                                      ),
+                              Expanded(
+                                child: _buildMetricCard(
+                                  'Occupancy Rate',
+                                  '${_getOccupancyRate(provider.rooms).toStringAsFixed(1)}%',
+                                  Icons.hotel,
+                                  const LinearGradient(
+                                    colors: [
+                                      Color(0xFF1E3A8A),
+                                      Color(0xFF3B82F6),
                                     ],
                                   ),
+                                  _getOccupancyRate(provider.rooms) > 80
+                                      ? 'High occupancy'
+                                      : _getOccupancyRate(provider.rooms) > 50
+                                      ? 'Moderate occupancy'
+                                      : 'Low occupancy',
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildMetricCard(
+                                  'Total Bookings',
+                                  provider.bookings.length.toString(),
+                                  Icons.book_online,
+                                  const LinearGradient(
+                                    colors: [
+                                      Color(0xFF14B8A6),
+                                      Color(0xFF059669),
+                                    ],
+                                  ),
+                                  'All time',
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildMetricCard(
+                                  'Available Rooms',
+                                  provider.availableRooms.toString(),
+                                  Icons.bed,
+                                  const LinearGradient(
+                                    colors: [
+                                      Color(0xFFEAB308),
+                                      Color(0xFFD97706),
+                                    ],
+                                  ),
+                                  'Ready for booking',
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildMetricCard(
+                                  'Revenue This Month',
+                                  '₹${NumberFormat('#,##,###').format(provider.totalRevenue)}',
+                                  Icons.trending_up,
+                                  const LinearGradient(
+                                    colors: [
+                                      Color(0xFFF43F5E),
+                                      Color(0xFFEC4899),
+                                    ],
+                                  ),
+                                  'Paid bookings',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ),
 
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 100), // Space for bottom navigation
-              ),
-            ],
-          ),
-        ),
-        // Drawer Menu
-        drawer: Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const DrawerHeader(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                  // Charts Section
+                  SliverToBoxAdapter(
+                    child: AnimationLimiter(
+                      child: Column(
+                        children: AnimationConfiguration.toStaggeredList(
+                          duration: const Duration(milliseconds: 500),
+                          childAnimationBuilder: (widget) => SlideAnimation(
+                            horizontalOffset: 50.0,
+                            child: FadeInAnimation(child: widget),
+                          ),
+                          children: [
+                            // Monthly Bookings Chart
+                            Container(
+                              margin: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    offset: const Offset(0, 5),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Monthly Bookings Trend',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    height: 200,
+                                    child: BarChart(
+                                      BarChartData(
+                                        alignment:
+                                            BarChartAlignment.spaceAround,
+                                        maxY: provider.bookings.isNotEmpty
+                                            ? _getBookingsPerMonth(
+                                                        provider.bookings,
+                                                      )
+                                                      .map(
+                                                        (e) =>
+                                                            e.barRods.first.toY,
+                                                      )
+                                                      .reduce(
+                                                        (a, b) => a > b ? a : b,
+                                                      ) +
+                                                  2
+                                            : 10,
+                                        barTouchData: BarTouchData(
+                                          enabled: true,
+                                        ),
+                                        titlesData: FlTitlesData(
+                                          leftTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                            ),
+                                          ),
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              getTitlesWidget: (value, meta) {
+                                                final now = DateTime.now();
+                                                final month = DateTime(
+                                                  now.year,
+                                                  now.month - 5 + value.toInt(),
+                                                  1,
+                                                );
+                                                return Text(
+                                                  DateFormat(
+                                                    'MMM',
+                                                  ).format(month),
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 12,
+                                                    color: const Color(
+                                                      0xFF64748B,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          rightTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
+                                            ),
+                                          ),
+                                          topTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
+                                            ),
+                                          ),
+                                        ),
+                                        borderData: FlBorderData(show: false),
+                                        barGroups: _getBookingsPerMonth(
+                                          provider.bookings,
+                                        ),
+                                        gridData: const FlGridData(show: false),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Room Occupancy Pie Chart - FIXED LAYOUT
+                            Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    offset: const Offset(0, 5),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Room Status Distribution',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  // FIXED: Proper responsive layout for pie chart
+                                  SizedBox(
+                                    height: 250,
+                                    child: Row(
+                                      children: [
+                                        // Pie chart - Fixed aspect ratio
+                                        Expanded(
+                                          flex: 3,
+                                          child: AspectRatio(
+                                            aspectRatio: 1.0,
+                                            child: PieChart(
+                                              PieChartData(
+                                                sections: _getRoomOccupancy(
+                                                  provider.rooms,
+                                                ),
+                                                borderData: FlBorderData(
+                                                  show: false,
+                                                ),
+                                                sectionsSpace: 2,
+                                                centerSpaceRadius: 40,
+                                                pieTouchData: PieTouchData(
+                                                  enabled: false,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 20),
+                                        // Legend - Fixed layout
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: _buildPieChartLegend(
+                                              provider.rooms,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Revenue Trend Line Chart
+                            Container(
+                              margin: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    offset: const Offset(0, 5),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Revenue Trend (₹ in thousands)',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    height: 200,
+                                    child: LineChart(
+                                      LineChartData(
+                                        gridData: const FlGridData(show: true),
+                                        titlesData: FlTitlesData(
+                                          leftTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                            ),
+                                          ),
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              getTitlesWidget: (value, meta) {
+                                                final now = DateTime.now();
+                                                final month = DateTime(
+                                                  now.year,
+                                                  now.month - 5 + value.toInt(),
+                                                  1,
+                                                );
+                                                return Text(
+                                                  DateFormat(
+                                                    'MMM',
+                                                  ).format(month),
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 12,
+                                                    color: const Color(
+                                                      0xFF64748B,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          rightTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
+                                            ),
+                                          ),
+                                          topTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
+                                            ),
+                                          ),
+                                        ),
+                                        borderData: FlBorderData(show: false),
+                                        lineBarsData: [
+                                          LineChartBarData(
+                                            spots: _getRevenueTrend(
+                                              provider.bookings,
+                                            ),
+                                            isCurved: true,
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color(0xFF1E3A8A),
+                                                Color(0xFF3B82F6),
+                                              ],
+                                            ),
+                                            barWidth: 4,
+                                            isStrokeCapRound: true,
+                                            dotData: const FlDotData(
+                                              show: true,
+                                            ),
+                                            belowBarData: BarAreaData(
+                                              show: true,
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  const Color(
+                                                    0xFF1E3A8A,
+                                                  ).withValues(alpha: 0.3),
+                                                  const Color(
+                                                    0xFF1E3A8A,
+                                                  ).withValues(alpha: 0.1),
+                                                ],
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  'Resort Manager',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 100), // Space for bottom navigation
                   ),
-                ),
+                ],
               ),
-              _buildDrawerItem(
-                context,
-                Icons.dashboard,
-                'Dashboard',
-                '/dashboard',
+            ),
+            // Drawer Menu
+            drawer: Drawer(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  const DrawerHeader(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                      ),
+                    ),
+                    child: Text(
+                      'Resort Manager',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    Icons.dashboard,
+                    'Dashboard',
+                    '/dashboard',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    Icons.bed_rounded,
+                    'Rooms',
+                    '/rooms',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    Icons.people_alt_rounded,
+                    'Guest List',
+                    '/guests',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    Icons.attach_money_rounded,
+                    'Sales / Payment',
+                    '/sales',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    Icons.analytics_outlined,
+                    'Analytics',
+                    '/analytics',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    Icons.add_box_rounded,
+                    'Booking',
+                    '/booking-form',
+                  ),
+                ],
               ),
-              _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
-              _buildDrawerItem(
-                context,
-                Icons.people_alt_rounded,
-                'Guest List',
-                '/guests',
-              ),
-              _buildDrawerItem(
-                context,
-                Icons.attach_money_rounded,
-                'Sales / Payment',
-                '/sales',
-              ),
-              _buildDrawerItem(
-                context,
-                Icons.analytics_outlined,
-                'Analytics',
-                '/analytics',
-              ),
-              _buildDrawerItem(
-                context,
-                Icons.add_box_rounded,
-                'Booking',
-                '/booking-form',
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

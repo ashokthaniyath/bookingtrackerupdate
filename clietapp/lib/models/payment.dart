@@ -22,4 +22,30 @@ class Payment extends HiveObject {
     required this.status,
     required this.date,
   });
+
+  // Backend: Supabase Integration - Serialization methods
+  Map<String, dynamic> toSupabase() {
+    return {
+      'guest_name': guest.name,
+      'guest_email': guest.email,
+      'guest_phone': guest.phone,
+      'amount': amount,
+      'status': status,
+      'date': date.toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+    };
+  }
+
+  factory Payment.fromSupabase(Map<String, dynamic> data) {
+    return Payment(
+      guest: Guest(
+        name: data['guest_name'] ?? '',
+        email: data['guest_email'],
+        phone: data['guest_phone'],
+      ),
+      amount: (data['amount'] ?? 0.0).toDouble(),
+      status: data['status'] ?? 'Pending',
+      date: DateTime.parse(data['date'] ?? DateTime.now().toIso8601String()),
+    );
+  }
 }

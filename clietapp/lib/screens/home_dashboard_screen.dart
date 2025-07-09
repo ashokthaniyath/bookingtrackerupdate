@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:provider/provider.dart';
 import '../widgets/invoice_card.dart';
+import '../providers/resort_data_provider.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -36,6 +38,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   }
 
   void _showFeature(BuildContext context, String label, String route) {
+    // Debug: Confirm navigation path during testing
+    print("Navigating to $label Page via route: $route");
     Navigator.pushNamed(context, route);
   }
 
@@ -111,91 +115,142 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       ),
     ];
 
-    // UI Enhancement: Luxury Gradient Background
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF87CEEB), // Sky blue
-            Color(0xFFFFFFFF), // White
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SafeArea(
-            child: CustomScrollView(
-              slivers: [
-                // UI Enhancement: Luxury Welcome Header
-                SliverToBoxAdapter(
-                  child: AnimationConfiguration.staggeredList(
-                    position: 0,
-                    child: SlideAnimation(
-                      verticalOffset: 50.0,
-                      child: FadeInAnimation(
-                        child: Container(
-                          margin: const EdgeInsets.all(20),
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                offset: const Offset(0, 8),
-                                blurRadius: 24,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: const Icon(
-                                      Icons.villa,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
+    // Data Flow: Use Consumer to listen to provider changes for any future real-time updates
+    return Consumer<ResortDataProvider>(
+      builder: (context, provider, child) {
+        // UI Enhancement: Luxury Gradient Background
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF87CEEB), // Sky blue
+                Color(0xFFFFFFFF), // White
+              ],
+            ),
+          ),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SafeArea(
+                child: CustomScrollView(
+                  slivers: [
+                    // UI Enhancement: Luxury Welcome Header
+                    SliverToBoxAdapter(
+                      child: AnimationConfiguration.staggeredList(
+                        position: 0,
+                        child: SlideAnimation(
+                          verticalOffset: 50.0,
+                          child: FadeInAnimation(
+                            child: Container(
+                              margin: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF1E3A8A),
+                                    Color(0xFF3B82F6),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    offset: const Offset(0, 8),
+                                    blurRadius: 24,
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Good $timeOfDay!',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 16,
-                                            color: Colors.white.withValues(
-                                              alpha: 0.9,
-                                            ),
-                                            fontWeight: FontWeight.w500,
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
                                           ),
                                         ),
+                                        child: const Icon(
+                                          Icons.villa,
+                                          color: Colors.white,
+                                          size: 28,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Good $timeOfDay!',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 16,
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.9,
+                                                ),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Text(
+                                              'Lakshadweep Resort',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 24,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.access_time,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.8,
+                                          ),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 8),
                                         Text(
-                                          'Lakshadweep Resort',
+                                          'Last updated: ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} IST',
                                           style: GoogleFonts.poppins(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
+                                            fontSize: 12,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.8,
+                                            ),
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
                                       ],
@@ -203,184 +258,161 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.access_time,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.8,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // UI Enhancement: Luxury Invoice Card
+                    SliverToBoxAdapter(
+                      child: AnimationConfiguration.staggeredList(
+                        position: 1,
+                        child: SlideAnimation(
+                          verticalOffset: 50.0,
+                          child: FadeInAnimation(
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: InvoiceCard(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // UI Enhancement: Quick Actions Header
+                    SliverToBoxAdapter(
+                      child: AnimationConfiguration.staggeredList(
+                        position: 2,
+                        child: SlideAnimation(
+                          verticalOffset: 50.0,
+                          child: FadeInAnimation(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                24,
+                                20,
+                                16,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF14B8A6),
+                                          Color(0xFF06B6D4),
+                                        ],
                                       ),
-                                      size: 16,
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Last updated: ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} IST',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.8,
-                                        ),
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    child: const Icon(
+                                      Icons.flash_on,
+                                      color: Colors.white,
+                                      size: 20,
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // UI Enhancement: Luxury Invoice Card
-                SliverToBoxAdapter(
-                  child: AnimationConfiguration.staggeredList(
-                    position: 1,
-                    child: SlideAnimation(
-                      verticalOffset: 50.0,
-                      child: FadeInAnimation(
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: InvoiceCard(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // UI Enhancement: Quick Actions Header
-                SliverToBoxAdapter(
-                  child: AnimationConfiguration.staggeredList(
-                    position: 2,
-                    child: SlideAnimation(
-                      verticalOffset: 50.0,
-                      child: FadeInAnimation(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF14B8A6),
-                                      Color(0xFF06B6D4),
-                                    ],
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.flash_on,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Quick Actions',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Quick Actions',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1E293B),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
 
-                // UI Enhancement: Luxury Features Grid
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: AnimationLimiter(
-                    child: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 16,
-                            crossAxisSpacing: 16,
-                            childAspectRatio: 1.0,
-                          ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        if (index >= features.length) return null;
-                        return AnimationConfiguration.staggeredGrid(
-                          position: index,
-                          duration: const Duration(milliseconds: 600),
-                          columnCount: 2,
-                          child: SlideAnimation(
-                            verticalOffset: 50.0,
-                            child: FadeInAnimation(child: features[index]),
-                          ),
-                        );
-                      }, childCount: features.length),
+                    // UI Enhancement: Luxury Features Grid
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: AnimationLimiter(
+                        child: SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 16,
+                                crossAxisSpacing: 16,
+                                childAspectRatio: 1.0,
+                              ),
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            if (index >= features.length) return null;
+                            return AnimationConfiguration.staggeredGrid(
+                              position: index,
+                              duration: const Duration(milliseconds: 600),
+                              columnCount: 2,
+                              child: SlideAnimation(
+                                verticalOffset: 50.0,
+                                child: FadeInAnimation(child: features[index]),
+                              ),
+                            );
+                          }, childCount: features.length),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
 
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 100), // Space for bottom navigation
-                ),
-              ],
-            ),
-          ),
-        ),
-        // UI Enhancement: Luxury Floating Action Button
-        floatingActionButton: AnimationConfiguration.staggeredList(
-          position: 6,
-          child: SlideAnimation(
-            verticalOffset: 50.0,
-            child: FadeInAnimation(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF1E3A8A).withValues(alpha: 0.4),
-                      offset: const Offset(0, 8),
-                      blurRadius: 16,
+                    const SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 100,
+                      ), // Space for bottom navigation
                     ),
                   ],
                 ),
-                child: FloatingActionButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/booking-form');
-                  },
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  tooltip: 'New Booking',
-                  child: const Icon(Icons.add, size: 32, color: Colors.white),
+              ),
+            ),
+            // UI Enhancement: Luxury Floating Action Button
+            floatingActionButton: AnimationConfiguration.staggeredList(
+              position: 6,
+              child: SlideAnimation(
+                verticalOffset: 50.0,
+                child: FadeInAnimation(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1E3A8A).withValues(alpha: 0.4),
+                          offset: const Offset(0, 8),
+                          blurRadius: 16,
+                        ),
+                      ],
+                    ),
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/booking-form');
+                      },
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      tooltip: 'New Booking',
+                      child: const Icon(
+                        Icons.add,
+                        size: 32,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           ),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      ),
+        );
+      },
     );
   }
 }

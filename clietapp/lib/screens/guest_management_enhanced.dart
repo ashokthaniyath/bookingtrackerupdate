@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import '../models/guest.dart';
 import '../models/booking.dart';
+import '../providers/resort_data_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
@@ -164,22 +165,36 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                 ),
               ),
               onPressed: () async {
-                final box = Hive.box<Guest>('guests');
+                // Sync: Use ResortDataProvider for data management
+                final provider = Provider.of<ResortDataProvider>(
+                  context,
+                  listen: false,
+                );
+
                 if (guest == null) {
-                  await box.add(
-                    Guest(
+                  // Add new guest
+                  final newGuest = Guest(
+                    name: nameController.text,
+                    email: emailController.text,
+                    phone: phoneController.text,
+                  );
+                  await provider.addGuest(newGuest);
+                } else {
+                  // Update existing guest
+                  final guestIndex = provider.guests.indexWhere(
+                    (g) => g.email == guest.email,
+                  );
+                  if (guestIndex != -1) {
+                    final updatedGuest = Guest(
                       name: nameController.text,
                       email: emailController.text,
                       phone: phoneController.text,
-                    ),
-                  );
-                } else {
-                  guest.name = nameController.text;
-                  guest.email = emailController.text;
-                  guest.phone = phoneController.text;
-                  await guest.save();
+                    );
+                    await provider.updateGuest(guestIndex, updatedGuest);
+                  }
                 }
                 Navigator.pop(context);
+                // Note: setState removed as provider handles state updates
               },
               child: Text(
                 guest == null ? 'Add Guest' : 'Update Guest',
@@ -224,8 +239,19 @@ class _GuestManagementPageState extends State<GuestManagementPage>
               ),
             ),
             onPressed: () async {
-              await guest.delete();
+              // Sync: Use ResortDataProvider for data management
+              final provider = Provider.of<ResortDataProvider>(
+                context,
+                listen: false,
+              );
+              final guestIndex = provider.guests.indexWhere(
+                (g) => g.email == guest.email,
+              );
+              if (guestIndex != -1) {
+                await provider.deleteGuest(guestIndex);
+              }
               Navigator.pop(context);
+              // Note: setState removed as provider handles state updates
             },
             child: Text(
               'Delete',
@@ -266,303 +292,293 @@ class _GuestManagementPageState extends State<GuestManagementPage>
 
   @override
   Widget build(BuildContext context) {
-    final guestBox = Hive.box<Guest>('guests');
-    final bookingBox = Hive.box<Booking>('bookings');
+    // Data Flow: Use Consumer to listen to provider changes
+    return Consumer<ResortDataProvider>(
+      builder: (context, provider, child) {
+        final filteredGuests = _getFilteredGuests(provider.guests);
 
-    return Scaffold(
-      // UI Enhancement: Luxury Gradient Background
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF87CEEB), // Sky blue
-              Color(0xFFFFFFFF), // White
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: CustomScrollView(
-              slivers: [
-                // UI Enhancement: Modern App Bar with Search
-                SliverAppBar(
-                  expandedHeight: 200,
-                  floating: false,
-                  pinned: true,
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  leading: Builder(
-                    builder: (context) => IconButton(
-                      icon: const Icon(Icons.menu, color: Color(0xFF1E3A8A)),
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                    ),
-                  ),
-                  flexibleSpace: FlexibleSpaceBar(
-                    title: Text(
-                      'Guest List',
-                      style: GoogleFonts.poppins(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1E3A8A),
+        return Scaffold(
+          // UI Enhancement: Luxury Gradient Background
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF87CEEB), // Sky blue
+                  Color(0xFFFFFFFF), // White
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: CustomScrollView(
+                  slivers: [
+                    // UI Enhancement: Modern App Bar with Search
+                    SliverAppBar(
+                      expandedHeight: 200,
+                      floating: false,
+                      pinned: true,
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      leading: Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(
+                            Icons.menu,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
                       ),
-                    ),
-                    centerTitle: true,
-                    background: Padding(
-                      padding: const EdgeInsets.only(
-                        left: 20,
-                        right: 20,
-                        bottom: 60,
-                        top: 80,
-                      ),
-                      child: Column(
-                        children: [
-                          const Spacer(),
-                          // UI Enhancement: Glassmorphism Search Bar
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: TextField(
-                              controller: _searchController,
-                              style: GoogleFonts.poppins(
-                                color: const Color(0xFF1E3A8A),
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'Search guests...',
-                                hintStyle: GoogleFonts.poppins(
-                                  color: const Color(
-                                    0xFF1E3A8A,
-                                  ).withValues(alpha: 0.7),
+                      flexibleSpace: FlexibleSpaceBar(
+                        title: Text(
+                          'Guest List',
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E3A8A),
+                          ),
+                        ),
+                        centerTitle: true,
+                        background: Padding(
+                          padding: const EdgeInsets.only(
+                            left: 20,
+                            right: 20,
+                            bottom: 60,
+                            top: 80,
+                          ),
+                          child: Column(
+                            children: [
+                              const Spacer(),
+                              // UI Enhancement: Glassmorphism Search Bar
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                  ),
                                 ),
-                                prefixIcon: const Icon(
-                                  Icons.search,
-                                  color: Color(0xFF1E3A8A),
+                                child: TextField(
+                                  controller: _searchController,
+                                  style: GoogleFonts.poppins(
+                                    color: const Color(0xFF1E3A8A),
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search guests...',
+                                    hintStyle: GoogleFonts.poppins(
+                                      color: const Color(
+                                        0xFF1E3A8A,
+                                      ).withValues(alpha: 0.7),
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.search,
+                                      color: Color(0xFF1E3A8A),
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _searchQuery = value;
+                                    });
+                                  },
                                 ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.all(16),
                               ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _searchQuery = value;
-                                });
-                              },
+                            ],
+                          ),
+                        ),
+                      ),
+                      actions: [
+                        // UI Enhancement: Floating Add Button
+                        Container(
+                          margin: const EdgeInsets.only(right: 16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF14B8A6), Color(0xFF06B6D4)],
                             ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF14B8A6,
+                                ).withValues(alpha: 0.3),
+                                offset: const Offset(0, 4),
+                                blurRadius: 12,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  actions: [
-                    // UI Enhancement: Floating Add Button
-                    Container(
-                      margin: const EdgeInsets.only(right: 16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF14B8A6), Color(0xFF06B6D4)],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF14B8A6,
-                            ).withValues(alpha: 0.3),
-                            offset: const Offset(0, 4),
-                            blurRadius: 12,
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        onPressed: () => _showGuestDialog(),
-                        icon: const Icon(Icons.person_add, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // UI Enhancement: Stats Cards
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatsCard(
-                            'Total Guests',
-                            guestBox.length.toString(),
-                            Icons.people,
-                            const Color(0xFF1E3A8A),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildStatsCard(
-                            'Active Bookings',
-                            bookingBox.values
-                                .where(
-                                  (b) =>
-                                      DateTime.now().isAfter(b.checkIn) &&
-                                      DateTime.now().isBefore(b.checkOut),
-                                )
-                                .length
-                                .toString(),
-                            Icons.hotel,
-                            const Color(0xFF14B8A6),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildStatsCard(
-                            'Check-ins Today',
-                            bookingBox.values
-                                .where(
-                                  (b) =>
-                                      b.checkIn.year == DateTime.now().year &&
-                                      b.checkIn.month == DateTime.now().month &&
-                                      b.checkIn.day == DateTime.now().day,
-                                )
-                                .length
-                                .toString(),
-                            Icons.login,
-                            const Color(0xFFEAB308),
+                          child: IconButton(
+                            onPressed: () => _showGuestDialog(),
+                            icon: const Icon(
+                              Icons.person_add,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
 
-                // UI Enhancement: Guest List with Animations
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: ValueListenableBuilder(
-                    valueListenable: guestBox.listenable(),
-                    builder: (context, Box<Guest> box, _) {
-                      final allGuests = box.values.toList();
-                      final guests = _getFilteredGuests(allGuests);
+                    // UI Enhancement: Stats Cards
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatsCard(
+                                'Total Guests',
+                                provider.guests.length.toString(),
+                                Icons.people,
+                                const Color(0xFF1E3A8A),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildStatsCard(
+                                'Active Bookings',
+                                provider.activeBookings.length.toString(),
+                                Icons.hotel,
+                                const Color(0xFF14B8A6),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildStatsCard(
+                                'Check-ins Today',
+                                provider.todayCheckIns.length.toString(),
+                                Icons.login,
+                                const Color(0xFFEAB308),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
-                      if (guests.isEmpty) {
-                        return SliverToBoxAdapter(
-                          child: Center(
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 60),
-                                Icon(
-                                  _searchQuery.isEmpty
-                                      ? Icons.people_outline
-                                      : Icons.search_off,
-                                  size: 80,
-                                  color: const Color(0xFF64748B),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  _searchQuery.isEmpty
-                                      ? 'No guests yet\nAdd your first guest!'
-                                      : 'No guests found\nTry a different search term',
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 18,
+                    // UI Enhancement: Guest List with Animations - Sync: Provider data
+                    filteredGuests.isEmpty
+                        ? SliverToBoxAdapter(
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  const SizedBox(height: 60),
+                                  Icon(
+                                    _searchQuery.isEmpty
+                                        ? Icons.people_outline
+                                        : Icons.search_off,
+                                    size: 80,
                                     color: const Color(0xFF64748B),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    _searchQuery.isEmpty
+                                        ? 'No guests yet\nAdd your first guest!'
+                                        : 'No guests found\nTry a different search term',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            sliver: AnimationLimiter(
+                              child: SliverList(
+                                delegate: SliverChildBuilderDelegate((
+                                  context,
+                                  index,
+                                ) {
+                                  final guest = filteredGuests[index];
+                                  return AnimationConfiguration.staggeredList(
+                                    position: index,
+                                    duration: const Duration(milliseconds: 500),
+                                    child: SlideAnimation(
+                                      horizontalOffset: 50.0,
+                                      child: FadeInAnimation(
+                                        child: _buildGuestCard(
+                                          guest,
+                                          provider.bookings,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }, childCount: filteredGuests.length),
+                              ),
                             ),
                           ),
-                        );
-                      }
 
-                      return AnimationLimiter(
-                        child: SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final guest = guests[index];
-                            return AnimationConfiguration.staggeredList(
-                              position: index,
-                              duration: const Duration(milliseconds: 500),
-                              child: SlideAnimation(
-                                horizontalOffset: 50.0,
-                                child: FadeInAnimation(
-                                  child: _buildGuestCard(guest, bookingBox),
-                                ),
-                              ),
-                            );
-                          }, childCount: guests.length),
-                        ),
-                      );
-                    },
+                    const SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 100,
+                      ), // Space for bottom navigation
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // UI Enhancement: Drawer Menu
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const DrawerHeader(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                    ),
+                  ),
+                  child: Text(
+                    'Resort Manager',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 100), // Space for bottom navigation
+                _buildDrawerItem(
+                  context,
+                  Icons.dashboard,
+                  'Dashboard',
+                  '/dashboard',
+                ),
+                _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
+                _buildDrawerItem(
+                  context,
+                  Icons.people_alt_rounded,
+                  'Guest List',
+                  '/guests',
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.attach_money_rounded,
+                  'Sales / Payment',
+                  '/sales',
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.analytics_outlined,
+                  'Analytics',
+                  '/analytics',
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.add_box_rounded,
+                  'Booking',
+                  '/booking-form',
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      // UI Enhancement: Drawer Menu
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                ),
-              ),
-              child: Text(
-                'Resort Manager',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.dashboard,
-              'Dashboard',
-              '/dashboard',
-            ),
-            _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
-            _buildDrawerItem(
-              context,
-              Icons.people_alt_rounded,
-              'Guest List',
-              '/guests',
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.attach_money_rounded,
-              'Sales / Payment',
-              '/sales',
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.analytics_outlined,
-              'Analytics',
-              '/analytics',
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.add_box_rounded,
-              'Booking',
-              '/booking-form',
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -620,9 +636,9 @@ class _GuestManagementPageState extends State<GuestManagementPage>
   }
 
   // UI Enhancement: Elegant Guest Card Design
-  Widget _buildGuestCard(Guest guest, Box<Booking> bookingBox) {
-    // Get guest's bookings
-    final guestBookings = bookingBox.values
+  Widget _buildGuestCard(Guest guest, List<Booking> bookings) {
+    // Get guest's bookings - Sync: Using provider data
+    final guestBookings = bookings
         .where((b) => b.guest.name == guest.name)
         .toList();
 

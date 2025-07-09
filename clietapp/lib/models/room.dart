@@ -37,35 +37,21 @@ class Room extends HiveObject {
     );
   }
 
-  Map<String, dynamic> toFirestore() {
-    return {'number': number, 'type': type, 'status': status};
-  }
-
-  factory Room.fromFirestore(Map<String, dynamic> map, String firestoreId) {
-    return Room(
-      number: map['number'] ?? '',
-      type: map['type'] ?? '',
-      status: map['status'] ?? '',
-      firestoreId: firestoreId,
-    );
-  }
-
-  // For Hive compatibility
-  factory Room.fromHive(Map<dynamic, dynamic> map) {
-    return Room(
-      number: map['number'] ?? '',
-      type: map['type'] ?? '',
-      status: map['status'] ?? '',
-      firestoreId: map['firestoreId'],
-    );
-  }
-
-  Map<String, dynamic> toHive() {
+  // Backend: Supabase Integration - Serialization methods
+  Map<String, dynamic> toSupabase() {
     return {
       'number': number,
       'type': type,
       'status': status,
-      'firestoreId': firestoreId,
+      'created_at': DateTime.now().toIso8601String(),
     };
+  }
+
+  factory Room.fromSupabase(Map<String, dynamic> data) {
+    return Room(
+      number: data['number'] ?? '',
+      type: data['type'] ?? '',
+      status: data['status'] ?? 'available',
+    );
   }
 }

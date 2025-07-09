@@ -1,20 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'utils/hive_init.dart';
 import 'utils/google_calendar_service.dart';
 import 'screens/main_scaffold.dart';
 import 'screens/auth_gate.dart';
 import 'theme.dart';
-import 'screens/dashboard_screen.dart';
 import 'screens/room_status.dart';
 import 'screens/booking_form.dart';
+import 'screens/room_management_enhanced.dart';
+import 'screens/guest_management_enhanced.dart';
+import 'screens/payments_enhanced.dart';
+import 'screens/analytics_enhanced.dart';
 import 'theme_mode_provider.dart';
 import 'utils/theme_notifier.dart';
+import 'providers/resort_data_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Backend: Supabase Integration - Initialize Supabase
+  await Supabase.initialize(
+    url: 'https://rvykrqjwoeoktmxwsdzj.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2eWtycWp3b2Vva3RteHdzZHpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5NzAxMjUsImV4cCI6MjA2NzU0NjEyNX0.LsTiHpMk3CQNubTm1VTNZYwE-qhTWv9mIKS6Kero_Uw',
+  );
+
   await Hive.initFlutter();
   await initializeHiveBoxes();
 
@@ -32,24 +45,36 @@ class NotionBookApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeNotifier>(
       builder: (context, themeNotifier, _) {
-        return MaterialApp(
-          title: 'NotionBook – Guest Booking Manager',
-          theme: notionTheme,
-          debugShowCheckedModeBanner: false,
-          home: const AuthGate(child: MainScaffold()),
-          routes: {
-            '/dashboard': (context) => const MainScaffold(initialIndex: 0),
-            '/rooms': (context) => const MainScaffold(initialIndex: 1),
-            '/guests': (context) => const MainScaffold(initialIndex: 2),
-            '/sales': (context) => const MainScaffold(initialIndex: 3),
-            '/analytics': (context) => const MainScaffold(initialIndex: 4),
-            '/calendar': (context) => const MainScaffold(initialIndex: 1),
-            '/profile': (context) => const MainScaffold(initialIndex: 2),
-            '/policy': (context) => const DashboardScreen(),
-            '/room_status': (context) => const RoomStatusScreen(),
-            '/room-status': (context) => const RoomStatusScreen(),
-            '/booking-form': (context) => const BookingFormPage(),
-          },
+        return ChangeNotifierProvider(
+          create: (context) => ResortDataProvider()..loadData(),
+          child: MaterialApp(
+            title: 'NotionBook – Guest Booking Manager',
+            theme: notionTheme,
+            debugShowCheckedModeBanner: false,
+            home: const AuthGate(child: MainScaffold()),
+            routes: {
+              // Fix: Reconfigured routes - Core pages via bottom nav
+              '/home': (context) => const MainScaffold(initialIndex: 0),
+              '/calendar': (context) => const MainScaffold(initialIndex: 1),
+              '/invoices': (context) => const MainScaffold(initialIndex: 2),
+              '/booking': (context) => const MainScaffold(initialIndex: 3),
+
+              // Secondary pages via drawer navigation
+              '/rooms': (context) => const RoomManagementPage(),
+              '/guests': (context) => const GuestManagementPage(),
+              '/payment': (context) => const PaymentsPage(),
+              '/analytics': (context) => const DashboardAnalyticsScreen(),
+
+              // Legacy routes for compatibility
+              '/dashboard': (context) => const MainScaffold(initialIndex: 0),
+              '/sales': (context) => const PaymentsPage(),
+              '/profile': (context) => const GuestManagementPage(),
+              '/policy': (context) => const MainScaffold(initialIndex: 0),
+              '/room_status': (context) => const RoomStatusScreen(),
+              '/room-status': (context) => const RoomStatusScreen(),
+              '/booking-form': (context) => const BookingFormPage(),
+            },
+          ),
         );
       },
     );

@@ -16,6 +16,7 @@ class CustomBottomNavigation extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Container(
         height: 80,
+        width: MediaQuery.of(context).size.width - 32,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
@@ -34,35 +35,30 @@ class CustomBottomNavigation extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
+            // Fix: Reconfigured Bottom Navigation Bar - Core 4 pages only
             _buildNavItem(
-              icon: Icons.dashboard_outlined,
-              selectedIcon: Icons.dashboard,
+              icon: Icons.home_outlined,
+              selectedIcon: Icons.home,
               index: 0,
-              label: 'Dashboard',
+              label: 'Home',
             ),
             _buildNavItem(
-              icon: Icons.bed_outlined,
-              selectedIcon: Icons.bed,
+              icon: Icons.calendar_month_outlined,
+              selectedIcon: Icons.calendar_month,
               index: 1,
-              label: 'Rooms',
-            ),
-            _buildNavItem(
-              icon: Icons.people_outline,
-              selectedIcon: Icons.people,
-              index: 2,
-              label: 'Guests',
+              label: 'Calendar',
             ),
             _buildNavItem(
               icon: Icons.receipt_long_outlined,
               selectedIcon: Icons.receipt_long,
-              index: 3,
+              index: 2,
               label: 'Invoices',
             ),
             _buildNavItem(
-              icon: Icons.analytics_outlined,
-              selectedIcon: Icons.analytics,
-              index: 4,
-              label: 'Analytics',
+              icon: Icons.book_online_outlined,
+              selectedIcon: Icons.book_online,
+              index: 3,
+              label: 'Booking',
             ),
           ],
         ),
@@ -84,7 +80,10 @@ class CustomBottomNavigation extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          onItemTapped(index);
+          // Bug Prevention: PostFrameCallback for safe navigation
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            onItemTapped(index);
+          });
         },
         behavior: HitTestBehavior.opaque,
         child: Container(

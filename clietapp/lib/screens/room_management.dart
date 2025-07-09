@@ -3,7 +3,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/room.dart';
 import '../models/booking.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class RoomManagementPage extends StatefulWidget {
   const RoomManagementPage({super.key});

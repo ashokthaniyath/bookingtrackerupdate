@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import '../models/booking.dart';
-import '../models/guest.dart';
-import '../models/room.dart';
+import '../providers/resort_data_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
@@ -86,90 +85,61 @@ class _PaymentsPageState extends State<PaymentsPage>
     }
   }
 
-  double _calculateTotalRevenue(List<Booking> bookings) {
-    // Assuming each booking has a standard rate (you can modify this logic)
-    return bookings
-            .where((b) => b.paymentStatus.toLowerCase() == 'paid')
-            .length *
-        1500.0; // ₹1500 per night average
-  }
-
-  double _calculatePendingAmount(List<Booking> bookings) {
-    return bookings
-            .where((b) => b.paymentStatus.toLowerCase() == 'pending')
-            .length *
-        1500.0;
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (!Hive.isBoxOpen('bookings') ||
-        !Hive.isBoxOpen('guests') ||
-        !Hive.isBoxOpen('rooms')) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    final bookingBox = Hive.box<Booking>('bookings');
-    final guestBox = Hive.box<Guest>('guests');
-    final roomBox = Hive.box<Room>('rooms');
-
-    return Scaffold(
-      // UI Enhancement: Luxury Gradient Background
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF87CEEB), // Sky blue
-              Color(0xFFFFFFFF), // White
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: CustomScrollView(
-              slivers: [
-                // UI Enhancement: Modern App Bar
-                SliverAppBar(
-                  expandedHeight: 120,
-                  floating: false,
-                  pinned: true,
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  leading: Builder(
-                    builder: (context) => IconButton(
-                      icon: const Icon(Icons.menu, color: Color(0xFF1E3A8A)),
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                    ),
-                  ),
-                  flexibleSpace: FlexibleSpaceBar(
-                    title: Text(
-                      'Sales & Payments',
-                      style: GoogleFonts.poppins(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1E3A8A),
+    // Data Flow: Use Consumer to listen to provider changes for real-time payments data
+    return Consumer<ResortDataProvider>(
+      builder: (context, provider, child) {
+        return Scaffold(
+          // UI Enhancement: Luxury Gradient Background
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF87CEEB), // Sky blue
+                  Color(0xFFFFFFFF), // White
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: CustomScrollView(
+                  slivers: [
+                    // UI Enhancement: Modern App Bar
+                    SliverAppBar(
+                      expandedHeight: 120,
+                      floating: false,
+                      pinned: true,
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      leading: Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(
+                            Icons.menu,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      flexibleSpace: FlexibleSpaceBar(
+                        title: Text(
+                          'Sales & Payments',
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E3A8A),
+                          ),
+                        ),
+                        centerTitle: true,
                       ),
                     ),
-                    centerTitle: true,
-                  ),
-                ),
 
-                // UI Enhancement: Revenue Dashboard
-                SliverToBoxAdapter(
-                  child: ValueListenableBuilder(
-                    valueListenable: bookingBox.listenable(),
-                    builder: (context, Box<Booking> box, _) {
-                      final bookings = box.values.toList();
-                      final totalRevenue = _calculateTotalRevenue(bookings);
-                      final pendingAmount = _calculatePendingAmount(bookings);
-                      final paidBookings = bookings
-                          .where((b) => b.paymentStatus.toLowerCase() == 'paid')
-                          .length;
-
-                      return Padding(
+                    // UI Enhancement: Revenue Dashboard
+                    SliverToBoxAdapter(
+                      child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
@@ -179,7 +149,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                                 Expanded(
                                   child: _buildRevenueCard(
                                     'Total Revenue',
-                                    '₹${NumberFormat('#,##,###').format(totalRevenue)}',
+                                    '₹${NumberFormat('#,##,###').format(provider.totalRevenue)}',
                                     Icons.account_balance_wallet,
                                     const LinearGradient(
                                       colors: [
@@ -193,7 +163,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                                 Expanded(
                                   child: _buildRevenueCard(
                                     'Pending Payments',
-                                    '₹${NumberFormat('#,##,###').format(pendingAmount)}',
+                                    '₹${NumberFormat('#,##,###').format(provider.pendingPayments)}',
                                     Icons.schedule,
                                     const LinearGradient(
                                       colors: [
@@ -212,7 +182,14 @@ class _PaymentsPageState extends State<PaymentsPage>
                                 Expanded(
                                   child: _buildRevenueCard(
                                     'Completed Payments',
-                                    paidBookings.toString(),
+                                    provider.bookings
+                                        .where(
+                                          (b) =>
+                                              b.paymentStatus.toLowerCase() ==
+                                              'paid',
+                                        )
+                                        .length
+                                        .toString(),
                                     Icons.check_circle,
                                     const LinearGradient(
                                       colors: [
@@ -240,199 +217,205 @@ class _PaymentsPageState extends State<PaymentsPage>
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
+                    ),
 
-                // UI Enhancement: Filter Chips
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Filter by Status:',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF1E293B),
-                          ),
+                    // UI Enhancement: Filter Chips
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Filter by Status:',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF1E293B),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children:
+                                      ['All', 'Paid', 'Pending', 'Overdue']
+                                          .map(
+                                            (status) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 8,
+                                              ),
+                                              child: FilterChip(
+                                                selected: _filter == status,
+                                                label: Text(
+                                                  status,
+                                                  style: GoogleFonts.poppins(
+                                                    color: _filter == status
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFF64748B,
+                                                          ),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                onSelected: (selected) {
+                                                  setState(() {
+                                                    _filter = status;
+                                                  });
+                                                },
+                                                backgroundColor: Colors.white,
+                                                selectedColor: const Color(
+                                                  0xFF14B8A6,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: ['All', 'Paid', 'Pending', 'Overdue']
-                                  .map(
-                                    (status) => Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: FilterChip(
-                                        selected: _filter == status,
-                                        label: Text(
-                                          status,
-                                          style: GoogleFonts.poppins(
-                                            color: _filter == status
-                                                ? Colors.white
-                                                : const Color(0xFF64748B),
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        onSelected: (selected) {
-                                          setState(() {
-                                            _filter = status;
-                                          });
-                                        },
-                                        backgroundColor: Colors.white,
-                                        selectedColor: const Color(0xFF14B8A6),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
+                      ),
+                    ),
+
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                    // UI Enhancement: Payment Transactions List
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: Builder(
+                        builder: (context) {
+                          final filteredBookings = _filter == 'All'
+                              ? provider.bookings
+                              : provider.bookings
+                                    .where(
+                                      (b) =>
+                                          b.paymentStatus.toLowerCase() ==
+                                          _filter.toLowerCase(),
+                                    )
+                                    .toList();
+
+                          if (filteredBookings.isEmpty) {
+                            return SliverToBoxAdapter(
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 60),
+                                    Icon(
+                                      Icons.receipt_long,
+                                      size: 80,
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Text(
+                                      'No transactions found',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        color: const Color(0xFF64748B),
                                       ),
                                     ),
-                                  )
-                                  .toList(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // UI Enhancement: Payment Transactions List
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: ValueListenableBuilder(
-                    valueListenable: bookingBox.listenable(),
-                    builder: (context, Box<Booking> box, _) {
-                      final allBookings = box.values.toList();
-                      final filteredBookings = _filter == 'All'
-                          ? allBookings
-                          : allBookings
-                                .where(
-                                  (b) =>
-                                      b.paymentStatus.toLowerCase() ==
-                                      _filter.toLowerCase(),
-                                )
-                                .toList();
-
-                      if (filteredBookings.isEmpty) {
-                        return SliverToBoxAdapter(
-                          child: Center(
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 60),
-                                Icon(
-                                  Icons.receipt_long,
-                                  size: 80,
-                                  color: const Color(0xFF64748B),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  'No transactions found',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 18,
-                                    color: const Color(0xFF64748B),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      return AnimationLimiter(
-                        child: SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final booking = filteredBookings[index];
-                            return AnimationConfiguration.staggeredList(
-                              position: index,
-                              duration: const Duration(milliseconds: 500),
-                              child: SlideAnimation(
-                                horizontalOffset: 50.0,
-                                child: FadeInAnimation(
-                                  child: _buildPaymentCard(booking),
+                                  ],
                                 ),
                               ),
                             );
-                          }, childCount: filteredBookings.length),
-                        ),
-                      );
-                    },
+                          }
+
+                          return AnimationLimiter(
+                            child: SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                final booking = filteredBookings[index];
+                                return AnimationConfiguration.staggeredList(
+                                  position: index,
+                                  duration: const Duration(milliseconds: 500),
+                                  child: SlideAnimation(
+                                    horizontalOffset: 50.0,
+                                    child: FadeInAnimation(
+                                      child: _buildPaymentCard(booking),
+                                    ),
+                                  ),
+                                );
+                              }, childCount: filteredBookings.length),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    const SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 100,
+                      ), // Space for bottom navigation
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // UI Enhancement: Drawer Menu
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const DrawerHeader(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                    ),
+                  ),
+                  child: Text(
+                    'Resort Manager',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 100), // Space for bottom navigation
+                _buildDrawerItem(
+                  context,
+                  Icons.dashboard,
+                  'Dashboard',
+                  '/dashboard',
+                ),
+                _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
+                _buildDrawerItem(
+                  context,
+                  Icons.people_alt_rounded,
+                  'Guest List',
+                  '/guests',
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.attach_money_rounded,
+                  'Sales / Payment',
+                  '/sales',
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.analytics_outlined,
+                  'Analytics',
+                  '/analytics',
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.add_box_rounded,
+                  'Booking',
+                  '/booking-form',
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      // UI Enhancement: Drawer Menu
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                ),
-              ),
-              child: Text(
-                'Resort Manager',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.dashboard,
-              'Dashboard',
-              '/dashboard',
-            ),
-            _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
-            _buildDrawerItem(
-              context,
-              Icons.people_alt_rounded,
-              'Guest List',
-              '/guests',
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.attach_money_rounded,
-              'Sales / Payment',
-              '/sales',
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.analytics_outlined,
-              'Analytics',
-              '/analytics',
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.add_box_rounded,
-              'Booking',
-              '/booking-form',
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
