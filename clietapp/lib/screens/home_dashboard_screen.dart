@@ -271,9 +271,34 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                         child: SlideAnimation(
                           verticalOffset: 50.0,
                           child: FadeInAnimation(
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              child: InvoiceCard(),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: Consumer<ResortDataProvider>(
+                                builder: (context, provider, _) {
+                                  // Show recent bookings if available
+                                  if (provider.bookings.isNotEmpty) {
+                                    final recentBooking =
+                                        provider.bookings.first;
+                                    return InvoiceCard(booking: recentBooking);
+                                  }
+                                  // Show placeholder if no bookings
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Text(
+                                        'No recent bookings',
+                                        style: GoogleFonts.poppins(),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),
@@ -370,46 +395,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 ),
               ),
             ),
-            // UI Enhancement: Luxury Floating Action Button
-            floatingActionButton: AnimationConfiguration.staggeredList(
-              position: 6,
-              child: SlideAnimation(
-                verticalOffset: 50.0,
-                child: FadeInAnimation(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF1E3A8A).withValues(alpha: 0.4),
-                          offset: const Offset(0, 8),
-                          blurRadius: 16,
-                        ),
-                      ],
-                    ),
-                    child: FloatingActionButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/booking-form');
-                      },
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      tooltip: 'New Booking',
-                      child: const Icon(
-                        Icons.add,
-                        size: 32,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           ),
         );
       },

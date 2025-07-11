@@ -3,10 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/user_card.dart';
 import '../widgets/settings_card.dart';
 import '../utils/profile_settings.dart';
-import 'package:hive/hive.dart';
+import '../utils/supabase_service.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
-import '../models/booking.dart';
 import 'package:url_launcher/url_launcher.dart' as launcher;
 import 'package:provider/provider.dart';
 import '../utils/theme_notifier.dart';
@@ -30,11 +29,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    final profile = await ProfileSettings.loadProfile();
-    setState(() {
-      _name = profile['name'] ?? 'Host Name';
-      _email = profile['email'] ?? 'host@email.com';
-    });
+    try {
+      final profile = await ProfileSettings.getProfile();
+      if (mounted) {
+        setState(() {
+          _name = profile['name'] ?? 'Host Name';
+          _email = profile['email'] ?? 'host@email.com';
+        });
+      }
+    } catch (e) {
+      // Use default values if profile loading fails
+      print('Error loading profile: $e');
+    }
   }
 
   void _editUserInfo() async {
@@ -137,49 +143,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _exportBookings({required bool asCsv}) async {
-    final box = Hive.box<Booking>('bookings');
-    final bookings = box.values.toList();
-    if (bookings.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No bookings to export.')));
-      return;
-    }
-    String data;
-    String fileType;
-    if (asCsv) {
-      fileType = 'csv';
-      final header =
-          'Guest,Room,CheckIn,CheckOut,Notes,DepositPaid,PaymentStatus';
-      final rows = bookings
-          .map(
-            (b) =>
-                '"${b.guest.name}","${b.room.number}","${b.checkIn}","${b.checkOut}","${b.notes}",${b.depositPaid},${b.paymentStatus}',
-          )
-          .join('\n');
-      data = '$header\n$rows';
-    } else {
-      fileType = 'json';
-      data = jsonEncode(
-        bookings
+    try {
+      final bookings = await SupabaseService.getBookings();
+      if (bookings.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No bookings to export.')),
+          );
+        }
+        return;
+      }
+      String data;
+      String fileType;
+      if (asCsv) {
+        fileType = 'csv';
+        final header =
+            'Guest,Room,CheckIn,CheckOut,Notes,DepositPaid,PaymentStatus';
+        final rows = bookings
             .map(
-              (b) => {
-                'guest': b.guest.name,
-                'room': b.room.number,
-                'checkIn': b.checkIn.toIso8601String(),
-                'checkOut': b.checkOut.toIso8601String(),
-                'notes': b.notes,
-                'depositPaid': b.depositPaid,
-                'paymentStatus': b.paymentStatus,
-              },
+              (b) =>
+                  '"${b.guest.name}","${b.room.number}","${b.checkIn}","${b.checkOut}","${b.notes}",${b.depositPaid},${b.paymentStatus}',
             )
-            .toList(),
-      );
+            .join('\n');
+        data = '$header\n$rows';
+      } else {
+        fileType = 'json';
+        data = jsonEncode(
+          bookings
+              .map(
+                (b) => {
+                  'guest': b.guest.name,
+                  'room': b.room.number,
+                  'checkIn': b.checkIn.toIso8601String(),
+                  'checkOut': b.checkOut.toIso8601String(),
+                  'notes': b.notes,
+                  'depositPaid': b.depositPaid,
+                  'paymentStatus': b.paymentStatus,
+                },
+              )
+              .toList(),
+        );
+      }
+      await Clipboard.setData(ClipboardData(text: data));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Exported as $fileType (copied to clipboard)'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error exporting bookings: $e')));
+      }
     }
-    await Clipboard.setData(ClipboardData(text: data));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Exported as $fileType (copied to clipboard)')),
-    );
   }
 
   Future<void> _exportGuestPolicy() async {
@@ -187,9 +206,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     const policy =
         'Guest Policy: 1. Check-in after 2pm. 2. No smoking. 3. ID required.';
     await Clipboard.setData(const ClipboardData(text: policy));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Guest policy copied to clipboard.')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Guest policy copied to clipboard.')),
+      );
+    }
   }
 
   Future<void> _contactSupport() async {
@@ -201,19 +222,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (await launcher.canLaunchUrl(uri)) {
       await launcher.launchUrl(uri);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open email app.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open email app.')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!Hive.isBoxOpen('bookings') ||
-        !Hive.isBoxOpen('guests') ||
-        !Hive.isBoxOpen('rooms')) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
     final profileComplete = _name.isNotEmpty && _email.isNotEmpty;
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: true);
     return SafeArea(
@@ -269,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 44,
-                    backgroundColor: const Color(0xFF007AFF).withOpacity(0.12),
+                    backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.12),
                     child: _avatarPath == null
                         ? Icon(
                             Icons.person,

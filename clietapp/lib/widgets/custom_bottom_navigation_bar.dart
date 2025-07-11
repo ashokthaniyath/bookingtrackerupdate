@@ -80,13 +80,11 @@ class CustomBottomNavigation extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          // Bug Prevention: PostFrameCallback for safe navigation
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            onItemTapped(index);
-          });
+          // Direct navigation call
+          onItemTapped(index);
         },
         behavior: HitTestBehavior.opaque,
-        child: Container(
+        child: SizedBox(
           height: 80,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

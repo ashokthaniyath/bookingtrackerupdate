@@ -36,16 +36,12 @@ class _MainScaffoldState extends State<MainScaffold> {
     // Debug log for navigation tracking
     print("Navigating to index: $index");
 
-    // Bug Prevention: PostFrameCallback for safe navigation
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 50), () {
-        if (mounted) {
-          setState(() {
-            _currentIndex = index;
-          });
-        }
+    // Direct state update for immediate navigation
+    if (mounted) {
+      setState(() {
+        _currentIndex = index;
       });
-    });
+    }
   }
 
   // Get page title based on current index
@@ -171,6 +167,28 @@ class _MainScaffoldState extends State<MainScaffold> {
                       title: 'Analytics',
                       subtitle: 'Performance Analytics',
                       route: '/analytics',
+                    ),
+                    const SizedBox(height: 20),
+                    // Divider for profile section
+                    Container(
+                      height: 1,
+                      margin: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            Colors.grey.shade300,
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                    _buildDrawerItem(
+                      context,
+                      icon: Icons.person_outline,
+                      title: 'Profile',
+                      subtitle: 'Account Settings',
+                      route: '/profile',
                     ),
                   ],
                 ),

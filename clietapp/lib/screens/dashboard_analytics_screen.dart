@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../models/booking.dart';
 import '../models/room.dart';
 import '../models/payment.dart';
+import '../utils/supabase_service.dart';
 import '../widgets/custom_bottom_navigation_bar.dart';
 
 class DashboardAnalyticsScreen extends StatefulWidget {
@@ -18,6 +18,7 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen> {
   List<Booking> bookings = [];
   List<Room> rooms = [];
   List<Payment> payments = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -26,14 +27,26 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen> {
   }
 
   Future<void> _loadData() async {
-    final bookingsBox = Hive.box<Booking>('bookings');
-    final roomsBox = Hive.box<Room>('rooms');
-    final paymentsBox = Hive.box<Payment>('payments');
-    setState(() {
-      bookings = bookingsBox.values.toList();
-      rooms = roomsBox.values.toList();
-      payments = paymentsBox.values.toList();
-    });
+    try {
+      final loadedBookings = await SupabaseService.getBookings();
+      final loadedRooms = await SupabaseService.getRooms();
+      final loadedPayments = await SupabaseService.getPayments();
+      setState(() {
+        bookings = loadedBookings;
+        rooms = loadedRooms;
+        payments = loadedPayments;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
+      }
+    }
   }
 
   // --- Data Aggregation ---
@@ -103,14 +116,9 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!Hive.isBoxOpen('bookings') ||
-        !Hive.isBoxOpen('rooms') ||
-        !Hive.isBoxOpen('payments')) {
+    if (isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final bookingsListenable = Hive.box<Booking>('bookings').listenable();
-    final roomsListenable = Hive.box<Room>('rooms').listenable();
-    final paymentsListenable = Hive.box<Payment>('payments').listenable();
 
     return Scaffold(
       appBar: AppBar(
@@ -170,18 +178,33 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen> {
           ],
         ),
       ),
-      body: ValueListenableBuilder(
-        valueListenable: bookingsListenable,
-        builder: (context, Box<Booking> bookingsBox, _) {
-          bookings = bookingsBox.values.toList();
-          return ValueListenableBuilder(
-            valueListenable: roomsListenable,
-            builder: (context, Box<Room> roomsBox, _) {
-              rooms = roomsBox.values.toList();
-              return ValueListenableBuilder(
-                valueListenable: paymentsListenable,
-                builder: (context, Box<Payment> paymentsBox, _) {
-                  payments = paymentsBox.values.toList();
+      body: StreamBuilder<List<Booking>>(
+        stream: SupabaseService.getBookingsStream(),
+        builder: (context, bookingSnapshot) {
+          return StreamBuilder<List<Room>>(
+            stream: SupabaseService.getRoomsStream(),
+            builder: (context, roomSnapshot) {
+              return StreamBuilder<List<Payment>>(
+                stream: SupabaseService.getPaymentsStream(),
+                builder: (context, paymentSnapshot) {
+                  if (bookingSnapshot.connectionState ==
+                          ConnectionState.waiting ||
+                      roomSnapshot.connectionState == ConnectionState.waiting ||
+                      paymentSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (bookingSnapshot.hasError ||
+                      roomSnapshot.hasError ||
+                      paymentSnapshot.hasError) {
+                    return Center(child: Text('Error loading analytics data'));
+                  }
+
+                  bookings = bookingSnapshot.data ?? [];
+                  rooms = roomSnapshot.data ?? [];
+                  payments = paymentSnapshot.data ?? [];
+
                   return ListView(
                     padding: const EdgeInsets.all(16),
                     children: [

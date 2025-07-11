@@ -5,6 +5,8 @@ import '../models/booking.dart';
 import '../providers/resort_data_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import '../widgets/custom_bottom_navigation_bar.dart';
+import 'main_scaffold.dart';
 
 class RoomManagementPage extends StatefulWidget {
   const RoomManagementPage({super.key});
@@ -36,6 +38,26 @@ class _RoomManagementPageState extends State<RoomManagementPage>
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  void _onTabSelected(int index) {
+    try {
+      // Debug log for navigation tracking
+      print("Navigating from rooms page to index: $index");
+
+      // Direct navigation to MainScaffold
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScaffold(initialIndex: index),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+    }
   }
 
   void _showRoomDialog({Room? room}) {
@@ -194,11 +216,13 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                   );
                   if (roomIndex != -1) {
                     final updatedRoom = Room(
+                      id: room.id, // Preserve the ID
                       number: numberController.text,
                       type: typeController.text,
                       status: status,
                     );
-                    await provider.updateRoom(roomIndex, updatedRoom);
+                    final roomId = room.id ?? roomIndex.toString();
+                    await provider.updateRoom(roomId, updatedRoom);
                   }
                 }
 
@@ -226,7 +250,9 @@ class _RoomManagementPageState extends State<RoomManagementPage>
     final provider = Provider.of<ResortDataProvider>(context, listen: false);
     final roomIndex = provider.rooms.indexWhere((r) => r.number == room.number);
     if (roomIndex != -1) {
-      await provider.deleteRoom(roomIndex);
+      final roomToDelete = provider.rooms[roomIndex];
+      final roomId = roomToDelete.id ?? roomIndex.toString();
+      await provider.deleteRoom(roomId);
     }
     // Note: setState removed as provider handles state updates
   }
@@ -291,6 +317,15 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                       pinned: true,
                       backgroundColor: Colors.transparent,
                       elevation: 0,
+                      leading: Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(
+                            Icons.menu,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
                       flexibleSpace: FlexibleSpaceBar(
                         title: Text(
                           'Rooms',
@@ -302,31 +337,6 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                         ),
                         centerTitle: true,
                       ),
-                      actions: [
-                        // UI Enhancement: Floating Add Button
-                        Container(
-                          margin: const EdgeInsets.only(right: 16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF14B8A6), Color(0xFF06B6D4)],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF14B8A6,
-                                ).withValues(alpha: 0.3),
-                                offset: const Offset(0, 4),
-                                blurRadius: 12,
-                              ),
-                            ],
-                          ),
-                          child: IconButton(
-                            onPressed: () => _showRoomDialog(),
-                            icon: const Icon(Icons.add, color: Colors.white),
-                          ),
-                        ),
-                      ],
                     ),
 
                     // UI Enhancement: Stats Cards - Sync: Real-time data from provider
@@ -412,6 +422,65 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                 ),
               ),
             ),
+          ),
+          // UI Enhancement: Drawer Menu
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const DrawerHeader(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                    ),
+                  ),
+                  child: Text(
+                    'Resort Manager',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.dashboard,
+                  'Dashboard',
+                  '/dashboard',
+                ),
+                _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
+                _buildDrawerItem(
+                  context,
+                  Icons.people_alt_rounded,
+                  'Guest List',
+                  '/guests',
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.attach_money_rounded,
+                  'Sales / Payment',
+                  '/sales',
+                ),
+                _buildDrawerItem(
+                  context,
+                  Icons.analytics_outlined,
+                  'Analytics',
+                  '/analytics',
+                ),
+                const Divider(),
+                _buildDrawerItem(
+                  context,
+                  Icons.person_outline,
+                  'Profile',
+                  '/profile',
+                ),
+              ],
+            ),
+          ),
+          bottomNavigationBar: CustomBottomNavigation(
+            selectedIndex: 0, // Rooms can be considered part of home/dashboard
+            onItemTapped: _onTabSelected,
           ),
         );
       },
@@ -632,6 +701,22 @@ class _RoomManagementPageState extends State<RoomManagementPage>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDrawerItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String route,
+  ) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF007AFF)),
+      title: Text(title, style: GoogleFonts.poppins()),
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.pushNamed(context, route);
+      },
     );
   }
 }

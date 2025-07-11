@@ -1,100 +1,88 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import '../models/room.dart';
-import '../models/booking.dart';
-import '../widgets/custom_bottom_navigation_bar.dart';
+import 'package:provider/provider.dart';
+import '../providers/resort_data_provider.dart';
 
 class RoomStatusScreen extends StatelessWidget {
   const RoomStatusScreen({super.key});
 
-  void _onTabSelected(int index, BuildContext context) {
-    if (index == 0) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/dashboard',
-        (route) => false,
-      );
-    } else if (index == 1) {
-      Navigator.pushNamedAndRemoveUntil(context, '/calendar', (route) => false);
-    } else if (index == 2) {
-      Navigator.pushNamedAndRemoveUntil(context, '/profile', (route) => false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final roomBox = Hive.isBoxOpen('rooms') ? Hive.box<Room>('rooms') : null;
-    final bookingBox = Hive.isBoxOpen('bookings')
-        ? Hive.box<Booking>('bookings')
-        : null;
-    if (roomBox == null || bookingBox == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    return ValueListenableBuilder(
-      valueListenable: roomBox.listenable(),
-      builder: (context, Box<Room> roomBox, _) {
-        final rooms = roomBox.values.toList();
-        return ValueListenableBuilder(
-          valueListenable: bookingBox.listenable(),
-          builder: (context, Box<Booking> bookingBox, _) {
-            final bookings = bookingBox.values.toList();
-            Map<String, List<Booking>> roomBookings = {};
-            for (final room in rooms) {
-              roomBookings[room.number] = bookings
-                  .where((b) => b.room.number == room.number)
-                  .toList();
-            }
-            return Scaffold(
-              appBar: AppBar(title: const Text('Room Status')),
-              body: rooms.isEmpty
-                  ? const Center(child: Text('No rooms found.'))
-                  : ListView.builder(
-                      itemCount: rooms.length,
-                      itemBuilder: (context, i) {
-                        final room = rooms[i];
-                        final bookingsForRoom = roomBookings[room.number] ?? [];
-                        final isBooked = bookingsForRoom.isNotEmpty;
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: ListTile(
-                            leading: Icon(
-                              isBooked
-                                  ? Icons.meeting_room
-                                  : Icons.meeting_room_outlined,
-                              color: isBooked ? Colors.red : Colors.green,
-                            ),
-                            title: Text('Room ${room.number} (${room.type})'),
-                            subtitle: isBooked
-                                ? Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: bookingsForRoom
-                                        .map(
-                                          (b) => Text(
-                                            'Booked: ${b.checkIn.day}/${b.checkIn.month} - ${b.checkOut.day}/${b.checkOut.month}',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
-                                  )
-                                : const Text('Available'),
-                          ),
-                        );
-                      },
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Room Status'),
+        backgroundColor: const Color(0xFF6366F1),
+        foregroundColor: Colors.white,
+      ),
+      body: Consumer<ResortDataProvider>(
+        builder: (context, provider, _) {
+          if (provider.rooms.isEmpty) {
+            return const Center(child: Text('No rooms available'));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: provider.rooms.length,
+            itemBuilder: (context, index) {
+              final room = provider.rooms[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: _getStatusColor(room.status),
+                    child: Text(
+                      room.number,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-              bottomNavigationBar: CustomBottomNavigation(
-                selectedIndex: 0, // or 1/2 depending on context
-                onItemTapped: (index) => _onTabSelected(index, context),
-              ),
-            );
-          },
-        );
-      },
+                  ),
+                  title: Text('Room ${room.number}'),
+                  subtitle: Text('${room.type} - ${room.status}'),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (status) async {
+                      await provider.updateRoomStatus(room.number, status);
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'available',
+                        child: Text('Available'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'occupied',
+                        child: Text('Occupied'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'cleaning',
+                        child: Text('Cleaning'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'maintenance',
+                        child: Text('Maintenance'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'available':
+        return Colors.green;
+      case 'occupied':
+        return Colors.red;
+      case 'cleaning':
+        return Colors.orange;
+      case 'maintenance':
+        return Colors.grey;
+      default:
+        return Colors.blue;
+    }
   }
 }

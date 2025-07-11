@@ -1,42 +1,19 @@
-import 'package:hive/hive.dart';
-part 'room_calendar.g.dart';
-
-@HiveType(typeId: 4)
-class RoomCalendar extends HiveObject {
-  @HiveField(0)
+class RoomCalendar {
+  String? id;
   String roomId;
-
-  @HiveField(1)
   String roomNumber;
-
-  @HiveField(2)
   String roomType;
-
-  @HiveField(3)
   String calendarId; // Google Calendar ID
-
-  @HiveField(4)
   bool isShared;
-
-  @HiveField(5)
   List<String> sharedWith; // Email addresses with access
-
-  @HiveField(6)
   bool autoAcceptBookings;
-
-  @HiveField(7)
   String color;
-
-  @HiveField(8)
-  int capacity;
-
-  @HiveField(9)
-  String location;
-
-  @HiveField(10)
-  List<UnavailableHours> unavailableHours;
+  Map<String, dynamic> settings;
+  DateTime createdAt;
+  DateTime lastSyncedAt;
 
   RoomCalendar({
+    this.id,
     required this.roomId,
     required this.roomNumber,
     required this.roomType,
@@ -44,13 +21,53 @@ class RoomCalendar extends HiveObject {
     this.isShared = false,
     this.sharedWith = const [],
     this.autoAcceptBookings = true,
-    this.color = '#4285F4',
-    this.capacity = 2,
-    this.location = '',
-    this.unavailableHours = const [],
-  });
+    this.color = '#2196F3',
+    this.settings = const {},
+    DateTime? createdAt,
+    DateTime? lastSyncedAt,
+  }) : createdAt = createdAt ?? DateTime.now(),
+       lastSyncedAt = lastSyncedAt ?? DateTime.now();
 
-  Map<String, dynamic> toJson() {
+  // Supabase Integration - Serialization methods
+  Map<String, dynamic> toSupabase() {
+    return {
+      'room_id': roomId,
+      'room_number': roomNumber,
+      'room_type': roomType,
+      'calendar_id': calendarId,
+      'is_shared': isShared,
+      'shared_with': sharedWith,
+      'auto_accept_bookings': autoAcceptBookings,
+      'color': color,
+      'settings': settings,
+      'created_at': createdAt.toIso8601String(),
+      'last_synced_at': lastSyncedAt.toIso8601String(),
+    };
+  }
+
+  factory RoomCalendar.fromSupabase(Map<String, dynamic> data) {
+    return RoomCalendar(
+      id: data['id']?.toString(),
+      roomId: data['room_id'] ?? '',
+      roomNumber: data['room_number'] ?? '',
+      roomType: data['room_type'] ?? '',
+      calendarId: data['calendar_id'] ?? '',
+      isShared: data['is_shared'] ?? false,
+      sharedWith: List<String>.from(data['shared_with'] ?? []),
+      autoAcceptBookings: data['auto_accept_bookings'] ?? true,
+      color: data['color'] ?? '#2196F3',
+      settings: Map<String, dynamic>.from(data['settings'] ?? {}),
+      createdAt: DateTime.parse(
+        data['created_at'] ?? DateTime.now().toIso8601String(),
+      ),
+      lastSyncedAt: DateTime.parse(
+        data['last_synced_at'] ?? DateTime.now().toIso8601String(),
+      ),
+    );
+  }
+
+  // Legacy support for existing serialization
+  Map<String, dynamic> toMap() {
     return {
       'roomId': roomId,
       'roomNumber': roomNumber,
@@ -60,111 +77,187 @@ class RoomCalendar extends HiveObject {
       'sharedWith': sharedWith,
       'autoAcceptBookings': autoAcceptBookings,
       'color': color,
-      'capacity': capacity,
-      'location': location,
-      'unavailableHours': unavailableHours.map((e) => e.toJson()).toList(),
+      'settings': settings,
+      'createdAt': createdAt.toIso8601String(),
+      'lastSyncedAt': lastSyncedAt.toIso8601String(),
     };
   }
 
-  factory RoomCalendar.fromJson(Map<String, dynamic> json) {
+  factory RoomCalendar.fromMap(Map<String, dynamic> map) {
     return RoomCalendar(
-      roomId: json['roomId'],
-      roomNumber: json['roomNumber'],
-      roomType: json['roomType'],
-      calendarId: json['calendarId'],
-      isShared: json['isShared'] ?? false,
-      sharedWith: List<String>.from(json['sharedWith'] ?? []),
-      autoAcceptBookings: json['autoAcceptBookings'] ?? true,
-      color: json['color'] ?? '#4285F4',
-      capacity: json['capacity'] ?? 2,
-      location: json['location'] ?? '',
-      unavailableHours:
-          (json['unavailableHours'] as List?)
-              ?.map((e) => UnavailableHours.fromJson(e))
-              .toList() ??
-          [],
+      roomId: map['roomId'] ?? '',
+      roomNumber: map['roomNumber'] ?? '',
+      roomType: map['roomType'] ?? '',
+      calendarId: map['calendarId'] ?? '',
+      isShared: map['isShared'] ?? false,
+      sharedWith: List<String>.from(map['sharedWith'] ?? []),
+      autoAcceptBookings: map['autoAcceptBookings'] ?? true,
+      color: map['color'] ?? '#2196F3',
+      settings: Map<String, dynamic>.from(map['settings'] ?? {}),
+      createdAt: DateTime.parse(
+        map['createdAt'] ?? DateTime.now().toIso8601String(),
+      ),
+      lastSyncedAt: DateTime.parse(
+        map['lastSyncedAt'] ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 }
 
-@HiveType(typeId: 5)
-class UnavailableHours extends HiveObject {
-  @HiveField(0)
+class CalendarEvent {
+  String? id;
+  String eventId;
+  String roomCalendarId;
   String title;
+  String description;
+  DateTime startTime;
+  DateTime endTime;
+  bool isAllDay;
 
-  @HiveField(1)
-  int startHour;
-
-  @HiveField(2)
-  int endHour;
-
-  @HiveField(3)
-  List<int> daysOfWeek; // 1=Monday, 7=Sunday
-
-  @HiveField(4)
-  bool isRecurring;
-
-  @HiveField(5)
-  String reason;
-
-  UnavailableHours({
+  CalendarEvent({
+    this.id,
+    required this.eventId,
+    required this.roomCalendarId,
     required this.title,
-    required this.startHour,
-    required this.endHour,
-    required this.daysOfWeek,
-    this.isRecurring = true,
-    this.reason = 'Maintenance',
+    this.description = '',
+    required this.startTime,
+    required this.endTime,
+    this.isAllDay = false,
   });
 
-  Map<String, dynamic> toJson() {
+  // Supabase Integration - Serialization methods
+  Map<String, dynamic> toSupabase() {
     return {
+      'event_id': eventId,
+      'room_calendar_id': roomCalendarId,
       'title': title,
-      'startHour': startHour,
-      'endHour': endHour,
-      'daysOfWeek': daysOfWeek,
-      'isRecurring': isRecurring,
-      'reason': reason,
+      'description': description,
+      'start_time': startTime.toIso8601String(),
+      'end_time': endTime.toIso8601String(),
+      'is_all_day': isAllDay,
+      'created_at': DateTime.now().toIso8601String(),
     };
   }
 
-  factory UnavailableHours.fromJson(Map<String, dynamic> json) {
-    return UnavailableHours(
-      title: json['title'],
-      startHour: json['startHour'],
-      endHour: json['endHour'],
-      daysOfWeek: List<int>.from(json['daysOfWeek']),
-      isRecurring: json['isRecurring'] ?? true,
-      reason: json['reason'] ?? 'Maintenance',
+  factory CalendarEvent.fromSupabase(Map<String, dynamic> data) {
+    return CalendarEvent(
+      id: data['id']?.toString(),
+      eventId: data['event_id'] ?? '',
+      roomCalendarId: data['room_calendar_id'] ?? '',
+      title: data['title'] ?? '',
+      description: data['description'] ?? '',
+      startTime: DateTime.parse(
+        data['start_time'] ?? DateTime.now().toIso8601String(),
+      ),
+      endTime: DateTime.parse(
+        data['end_time'] ?? DateTime.now().toIso8601String(),
+      ),
+      isAllDay: data['is_all_day'] ?? false,
+    );
+  }
+
+  // Legacy support for existing serialization
+  Map<String, dynamic> toMap() {
+    return {
+      'eventId': eventId,
+      'roomCalendarId': roomCalendarId,
+      'title': title,
+      'description': description,
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime.toIso8601String(),
+      'isAllDay': isAllDay,
+    };
+  }
+
+  factory CalendarEvent.fromMap(Map<String, dynamic> map) {
+    return CalendarEvent(
+      eventId: map['eventId'] ?? '',
+      roomCalendarId: map['roomCalendarId'] ?? '',
+      title: map['title'] ?? '',
+      description: map['description'] ?? '',
+      startTime: DateTime.parse(
+        map['startTime'] ?? DateTime.now().toIso8601String(),
+      ),
+      endTime: DateTime.parse(
+        map['endTime'] ?? DateTime.now().toIso8601String(),
+      ),
+      isAllDay: map['isAllDay'] ?? false,
     );
   }
 }
 
-@HiveType(typeId: 6)
-class CalendarNotification extends HiveObject {
-  @HiveField(0)
-  String bookingId;
+class RoomCalendarConfiguration {
+  String? id;
+  String roomId;
+  String timezone;
+  Map<String, bool> workingDays;
+  String workingHoursStart;
+  String workingHoursEnd;
+  int bufferTimeMinutes;
 
-  @HiveField(1)
-  String guestEmail;
-
-  @HiveField(2)
-  DateTime scheduledTime;
-
-  @HiveField(3)
-  String type; // 'reminder', 'confirmation', 'cancellation'
-
-  @HiveField(4)
-  bool sent;
-
-  @HiveField(5)
-  String message;
-
-  CalendarNotification({
-    required this.bookingId,
-    required this.guestEmail,
-    required this.scheduledTime,
-    required this.type,
-    this.sent = false,
-    this.message = '',
+  RoomCalendarConfiguration({
+    this.id,
+    required this.roomId,
+    this.timezone = 'UTC',
+    this.workingDays = const {
+      'monday': true,
+      'tuesday': true,
+      'wednesday': true,
+      'thursday': true,
+      'friday': true,
+      'saturday': true,
+      'sunday': true,
+    },
+    this.workingHoursStart = '00:00',
+    this.workingHoursEnd = '23:59',
+    this.bufferTimeMinutes = 15,
   });
+
+  // Supabase Integration - Serialization methods
+  Map<String, dynamic> toSupabase() {
+    return {
+      'room_id': roomId,
+      'timezone': timezone,
+      'working_days': workingDays,
+      'working_hours_start': workingHoursStart,
+      'working_hours_end': workingHoursEnd,
+      'buffer_time_minutes': bufferTimeMinutes,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+  }
+
+  factory RoomCalendarConfiguration.fromSupabase(Map<String, dynamic> data) {
+    return RoomCalendarConfiguration(
+      id: data['id']?.toString(),
+      roomId: data['room_id'] ?? '',
+      timezone: data['timezone'] ?? 'UTC',
+      workingDays: Map<String, bool>.from(data['working_days'] ?? {}),
+      workingHoursStart: data['working_hours_start'] ?? '00:00',
+      workingHoursEnd: data['working_hours_end'] ?? '23:59',
+      bufferTimeMinutes: data['buffer_time_minutes'] ?? 15,
+    );
+  }
+
+  // Legacy support for existing serialization
+  Map<String, dynamic> toMap() {
+    return {
+      'roomId': roomId,
+      'timezone': timezone,
+      'workingDays': workingDays,
+      'workingHoursStart': workingHoursStart,
+      'workingHoursEnd': workingHoursEnd,
+      'bufferTimeMinutes': bufferTimeMinutes,
+    };
+  }
+
+  factory RoomCalendarConfiguration.fromMap(Map<String, dynamic> map) {
+    return RoomCalendarConfiguration(
+      roomId: map['roomId'] ?? '',
+      timezone: map['timezone'] ?? 'UTC',
+      workingDays: Map<String, bool>.from(map['workingDays'] ?? {}),
+      workingHoursStart: map['workingHoursStart'] ?? '00:00',
+      workingHoursEnd: map['workingHoursEnd'] ?? '23:59',
+      bufferTimeMinutes: map['bufferTimeMinutes'] ?? 15,
+    );
+  }
 }

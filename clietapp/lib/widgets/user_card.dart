@@ -25,7 +25,7 @@ class UserCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 36,
-              backgroundColor: const Color(0xFF007AFF).withOpacity(0.12),
+              backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.12),
               child: Icon(
                 Icons.person,
                 size: 40,

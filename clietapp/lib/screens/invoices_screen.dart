@@ -58,27 +58,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Text(
-            'Invoices & Billing',
-            style: GoogleFonts.poppins(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF1E3A8A),
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.add, color: Color(0xFF1E3A8A)),
-              onPressed: () {
-                // Navigate to create invoice screen
-              },
-            ),
-          ],
-        ),
+        drawer: _buildDrawer(),
         body: FadeTransition(
           opacity: _fadeAnimation,
           child: Consumer<ResortDataProvider>(
@@ -123,23 +103,18 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                     // Paid Invoices Section
                     _buildSectionHeader('Paid Invoices'),
                     const SizedBox(height: 16),
-                    ...paidBookings
-                        .map(
-                          (booking) => _buildInvoiceCard(booking, isPaid: true),
-                        )
-                        .toList(),
+                    ...paidBookings.map(
+                      (booking) => _buildInvoiceCard(booking, isPaid: true),
+                    ),
 
                     const SizedBox(height: 24),
 
                     // Pending Invoices Section
                     _buildSectionHeader('Pending Invoices'),
                     const SizedBox(height: 16),
-                    ...unpaidBookings
-                        .map(
-                          (booking) =>
-                              _buildInvoiceCard(booking, isPaid: false),
-                        )
-                        .toList(),
+                    ...unpaidBookings.map(
+                      (booking) => _buildInvoiceCard(booking, isPaid: false),
+                    ),
 
                     if (bookings.isEmpty)
                       Container(
@@ -150,7 +125,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               offset: const Offset(0, 5),
                               blurRadius: 10,
                             ),
@@ -207,7 +182,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             offset: const Offset(0, 5),
             blurRadius: 10,
           ),
@@ -218,7 +193,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -278,13 +253,13 @@ class _InvoicesScreenState extends State<InvoicesScreen>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isPaid
-              ? const Color(0xFF14B8A6).withOpacity(0.2)
-              : const Color(0xFFF43F5E).withOpacity(0.2),
+              ? const Color(0xFF14B8A6).withValues(alpha: 0.2)
+              : const Color(0xFFF43F5E).withValues(alpha: 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, 5),
             blurRadius: 10,
           ),
@@ -300,7 +275,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Invoice #${booking.key.toString().padLeft(8, '0').toUpperCase()}',
+                    'Invoice #${(booking.id ?? booking.hashCode.toString()).padLeft(8, '0').toUpperCase()}',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -453,5 +428,57 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     final nights = booking.checkOut.difference(booking.checkIn).inDays;
     const baseRate = 120.0; // Base rate per night
     return nights * baseRate;
+  }
+
+  // UI Enhancement: Modern Drawer
+  Widget _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+              ),
+            ),
+            child: Text(
+              'Resort Manager',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          _buildDrawerItem(Icons.dashboard, 'Dashboard', '/dashboard'),
+          _buildDrawerItem(Icons.bed_rounded, 'Rooms', '/rooms'),
+          _buildDrawerItem(Icons.people_alt_rounded, 'Guest List', '/guests'),
+          _buildDrawerItem(
+            Icons.attach_money_rounded,
+            'Sales / Payment',
+            '/sales',
+          ),
+          _buildDrawerItem(Icons.analytics_outlined, 'Analytics', '/analytics'),
+          _buildDrawerItem(Icons.add_box_rounded, 'Booking', '/booking-form'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(IconData icon, String title, String route) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF1E3A8A)),
+      title: Text(
+        title,
+        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+      ),
+      onTap: () {
+        Navigator.pop(context);
+        if (ModalRoute.of(context)?.settings.name != route) {
+          Navigator.pushReplacementNamed(context, route);
+        }
+      },
+    );
   }
 }

@@ -7,6 +7,8 @@ import '../providers/resort_data_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
+import '../widgets/custom_bottom_navigation_bar.dart';
+import 'main_scaffold.dart';
 
 class DashboardAnalyticsScreen extends StatefulWidget {
   const DashboardAnalyticsScreen({super.key});
@@ -42,38 +44,24 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
     super.dispose();
   }
 
-  List<BarChartGroupData> _getBookingsPerMonth(List<Booking> bookings) {
-    final now = DateTime.now();
-    final data = <BarChartGroupData>[];
+  void _onTabSelected(int index) {
+    try {
+      // Debug log for navigation tracking
+      print("Navigating from analytics page to index: $index");
 
-    for (int i = 0; i < 6; i++) {
-      final month = DateTime(now.year, now.month - 5 + i, 1);
-      final count = bookings
-          .where(
-            (b) =>
-                b.checkIn.year == month.year && b.checkIn.month == month.month,
-          )
-          .length;
-
-      data.add(
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: count.toDouble(),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-              ),
-              width: 20,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ],
-        ),
-      );
+      // Direct navigation to MainScaffold
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScaffold(initialIndex: index),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      debugPrint('Navigation error: $e');
     }
-    return data;
   }
 
   List<PieChartSectionData> _getRoomOccupancy(List<Room> rooms) {
@@ -412,108 +400,6 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
                             child: FadeInAnimation(child: widget),
                           ),
                           children: [
-                            // Monthly Bookings Chart
-                            Container(
-                              margin: const EdgeInsets.all(20),
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    offset: const Offset(0, 5),
-                                    blurRadius: 10,
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Monthly Bookings Trend',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF1E293B),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  SizedBox(
-                                    height: 200,
-                                    child: BarChart(
-                                      BarChartData(
-                                        alignment:
-                                            BarChartAlignment.spaceAround,
-                                        maxY: provider.bookings.isNotEmpty
-                                            ? _getBookingsPerMonth(
-                                                        provider.bookings,
-                                                      )
-                                                      .map(
-                                                        (e) =>
-                                                            e.barRods.first.toY,
-                                                      )
-                                                      .reduce(
-                                                        (a, b) => a > b ? a : b,
-                                                      ) +
-                                                  2
-                                            : 10,
-                                        barTouchData: BarTouchData(
-                                          enabled: true,
-                                        ),
-                                        titlesData: FlTitlesData(
-                                          leftTitles: const AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: true,
-                                            ),
-                                          ),
-                                          bottomTitles: AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: true,
-                                              getTitlesWidget: (value, meta) {
-                                                final now = DateTime.now();
-                                                final month = DateTime(
-                                                  now.year,
-                                                  now.month - 5 + value.toInt(),
-                                                  1,
-                                                );
-                                                return Text(
-                                                  DateFormat(
-                                                    'MMM',
-                                                  ).format(month),
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 12,
-                                                    color: const Color(
-                                                      0xFF64748B,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                          rightTitles: const AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: false,
-                                            ),
-                                          ),
-                                          topTitles: const AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: false,
-                                            ),
-                                          ),
-                                        ),
-                                        borderData: FlBorderData(show: false),
-                                        barGroups: _getBookingsPerMonth(
-                                          provider.bookings,
-                                        ),
-                                        gridData: const FlGridData(show: false),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
                             // Room Occupancy Pie Chart - FIXED LAYOUT
                             Container(
                               margin: const EdgeInsets.symmetric(
@@ -767,14 +653,20 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
                     'Analytics',
                     '/analytics',
                   ),
+                  const Divider(),
                   _buildDrawerItem(
                     context,
-                    Icons.add_box_rounded,
-                    'Booking',
-                    '/booking-form',
+                    Icons.person_outline,
+                    'Profile',
+                    '/profile',
                   ),
                 ],
               ),
+            ),
+            bottomNavigationBar: CustomBottomNavigation(
+              selectedIndex:
+                  1, // Analytics are typically index 1 (adjust as needed for your app structure)
+              onItemTapped: _onTabSelected,
             ),
           ),
         );

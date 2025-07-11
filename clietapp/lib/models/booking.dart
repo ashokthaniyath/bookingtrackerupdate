@@ -1,32 +1,18 @@
-import 'package:hive/hive.dart';
 import 'guest.dart';
 import 'room.dart';
-part 'booking.g.dart';
 
-@HiveType(typeId: 2)
-class Booking extends HiveObject {
-  @HiveField(0)
+class Booking {
+  String? id;
   Guest guest;
-
-  @HiveField(1)
   Room room;
-
-  @HiveField(2)
   DateTime checkIn;
-
-  @HiveField(3)
   DateTime checkOut;
-
-  @HiveField(4)
   String notes;
-
-  @HiveField(5)
   bool depositPaid;
-
-  @HiveField(6)
   String paymentStatus;
 
   Booking({
+    this.id,
     required this.guest,
     required this.room,
     required this.checkIn,
@@ -36,7 +22,50 @@ class Booking extends HiveObject {
     this.paymentStatus = 'Pending',
   });
 
-  // Firebase serialization methods
+  // Supabase Integration - Serialization methods
+  Map<String, dynamic> toSupabase() {
+    return {
+      'guest_name': guest.name,
+      'guest_email': guest.email,
+      'guest_phone': guest.phone,
+      'room_number': room.number,
+      'room_type': room.type,
+      'room_status': room.status,
+      'check_in': checkIn.toIso8601String(),
+      'check_out': checkOut.toIso8601String(),
+      'notes': notes,
+      'deposit_paid': depositPaid,
+      'payment_status': paymentStatus,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+  }
+
+  factory Booking.fromSupabase(Map<String, dynamic> data) {
+    return Booking(
+      id: data['id']?.toString(),
+      guest: Guest(
+        name: data['guest_name'] ?? '',
+        email: data['guest_email'],
+        phone: data['guest_phone'],
+      ),
+      room: Room(
+        number: data['room_number'] ?? '',
+        type: data['room_type'] ?? '',
+        status: data['room_status'] ?? 'available',
+      ),
+      checkIn: DateTime.parse(
+        data['check_in'] ?? DateTime.now().toIso8601String(),
+      ),
+      checkOut: DateTime.parse(
+        data['check_out'] ?? DateTime.now().toIso8601String(),
+      ),
+      notes: data['notes'] ?? '',
+      depositPaid: data['deposit_paid'] ?? false,
+      paymentStatus: data['payment_status'] ?? 'Pending',
+    );
+  }
+
+  // Legacy support for existing serialization
   Map<String, dynamic> toMap() {
     return {
       'guest': guest.toMap(),
@@ -62,48 +91,6 @@ class Booking extends HiveObject {
       notes: map['notes'] ?? '',
       depositPaid: map['depositPaid'] ?? false,
       paymentStatus: map['paymentStatus'] ?? 'Pending',
-    );
-  }
-
-  // Backend: Supabase Integration - Serialization methods
-  Map<String, dynamic> toSupabase() {
-    return {
-      'guest_name': guest.name,
-      'guest_email': guest.email,
-      'guest_phone': guest.phone,
-      'room_number': room.number,
-      'room_type': room.type,
-      'room_status': room.status,
-      'check_in': checkIn.toIso8601String(),
-      'check_out': checkOut.toIso8601String(),
-      'notes': notes,
-      'deposit_paid': depositPaid,
-      'payment_status': paymentStatus,
-      'created_at': DateTime.now().toIso8601String(),
-    };
-  }
-
-  factory Booking.fromSupabase(Map<String, dynamic> data) {
-    return Booking(
-      guest: Guest(
-        name: data['guest_name'] ?? '',
-        email: data['guest_email'],
-        phone: data['guest_phone'],
-      ),
-      room: Room(
-        number: data['room_number'] ?? '',
-        type: data['room_type'] ?? '',
-        status: data['room_status'] ?? 'available',
-      ),
-      checkIn: DateTime.parse(
-        data['check_in'] ?? DateTime.now().toIso8601String(),
-      ),
-      checkOut: DateTime.parse(
-        data['check_out'] ?? DateTime.now().toIso8601String(),
-      ),
-      notes: data['notes'] ?? '',
-      depositPaid: data['deposit_paid'] ?? false,
-      paymentStatus: data['payment_status'] ?? 'Pending',
     );
   }
 }

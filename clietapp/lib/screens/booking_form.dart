@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/custom_bottom_navigation_bar.dart';
 import '../models/booking.dart';
 import '../models/guest.dart';
 import '../models/room.dart';
 import '../providers/resort_data_provider.dart';
-import 'main_scaffold.dart';
 
 class BookingFormPage extends StatefulWidget {
   final DateTime? initialDate;
@@ -133,29 +131,6 @@ class _BookingFormPageState extends State<BookingFormPage>
     }
   }
 
-  void _onTabSelected(int index) {
-    try {
-      // Debug log for navigation tracking
-      print("Navigating from booking form to index: $index");
-
-      // Bug Prevention: PostFrameCallback for safe navigation
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          // Use the MainScaffold navigation system
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainScaffold(initialIndex: index),
-            ),
-            (route) => false,
-          );
-        }
-      });
-    } catch (e) {
-      debugPrint('Navigation error: $e');
-    }
-  }
-
   void _showAddGuestDialog(ResortDataProvider provider) async {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
@@ -270,11 +245,12 @@ class _BookingFormPageState extends State<BookingFormPage>
                         _guests = provider.guests;
                         _selectedGuest = newGuest;
                       });
-                      Navigator.pop(context);
+                      if (mounted) Navigator.pop(context);
                     }
                   } catch (e) {
                     debugPrint('Error adding guest: $e');
                     if (mounted) {
+                      Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Error adding guest: $e'),
@@ -366,9 +342,11 @@ class _BookingFormPageState extends State<BookingFormPage>
             appBar: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF1E3A8A)),
-                onPressed: () => Navigator.pop(context),
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu, color: Color(0xFF1E3A8A)),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
               ),
               title: Text(
                 'Create Booking',
@@ -444,10 +422,6 @@ class _BookingFormPageState extends State<BookingFormPage>
             ),
             // UI Enhancement: Drawer Menu
             drawer: _buildDrawer(),
-            bottomNavigationBar: CustomBottomNavigation(
-              selectedIndex: 0,
-              onItemTapped: _onTabSelected,
-            ),
           ),
         );
       },
@@ -462,7 +436,7 @@ class _BookingFormPageState extends State<BookingFormPage>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             offset: const Offset(0, 5),
             blurRadius: 10,
           ),
@@ -478,7 +452,7 @@ class _BookingFormPageState extends State<BookingFormPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF14B8A6).withOpacity(0.1),
+                    color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -567,7 +541,7 @@ class _BookingFormPageState extends State<BookingFormPage>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF14B8A6).withOpacity(0.1),
+                    color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -622,7 +596,7 @@ class _BookingFormPageState extends State<BookingFormPage>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             offset: const Offset(0, 5),
             blurRadius: 10,
           ),
@@ -638,7 +612,7 @@ class _BookingFormPageState extends State<BookingFormPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF14B8A6).withOpacity(0.1),
+                    color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -726,7 +700,7 @@ class _BookingFormPageState extends State<BookingFormPage>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF14B8A6).withOpacity(0.1),
+                    color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -770,7 +744,7 @@ class _BookingFormPageState extends State<BookingFormPage>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             offset: const Offset(0, 5),
             blurRadius: 10,
           ),
@@ -786,7 +760,7 @@ class _BookingFormPageState extends State<BookingFormPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF14B8A6).withOpacity(0.1),
+                    color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -943,7 +917,7 @@ class _BookingFormPageState extends State<BookingFormPage>
           ),
           borderRadius: BorderRadius.circular(15),
           color: date != null
-              ? const Color(0xFF14B8A6).withOpacity(0.05)
+              ? const Color(0xFF14B8A6).withValues(alpha: 0.05)
               : Colors.grey.shade50,
         ),
         child: Column(
@@ -1004,15 +978,15 @@ class _BookingFormPageState extends State<BookingFormPage>
               )
             : LinearGradient(
                 colors: [
-                  Colors.grey.withOpacity(0.5),
-                  Colors.grey.withOpacity(0.3),
+                  Colors.grey.withValues(alpha: 0.5),
+                  Colors.grey.withValues(alpha: 0.3),
                 ],
               ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: isFormReady
             ? [
                 BoxShadow(
-                  color: const Color(0xFF14B8A6).withOpacity(0.3),
+                  color: const Color(0xFF14B8A6).withValues(alpha: 0.3),
                   offset: const Offset(0, 8),
                   blurRadius: 20,
                 ),
@@ -1126,25 +1100,27 @@ class _BookingFormPageState extends State<BookingFormPage>
       if (mounted) Navigator.pop(context);
 
       // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 8),
-              Text(
-                'Booking created successfully!',
-                style: GoogleFonts.poppins(color: Colors.white),
-              ),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  'Booking created successfully!',
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF14B8A6),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: const Color(0xFF14B8A6),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        );
+      }
 
       // Debug: Print success message
       print(
@@ -1192,93 +1168,51 @@ class _BookingFormPageState extends State<BookingFormPage>
   // UI Enhancement: Modern Drawer
   Widget _buildDrawer() {
     return Drawer(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF87CEEB), Color(0xFFFFFFFF)],
-          ),
-        ),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.hotel, color: Colors.white, size: 40),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Resort Manager',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Booking System',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
               ),
             ),
-          ],
-        ),
+            child: Text(
+              'Resort Manager',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          _buildDrawerItem(Icons.dashboard, 'Dashboard', '/dashboard'),
+          _buildDrawerItem(Icons.bed_rounded, 'Rooms', '/rooms'),
+          _buildDrawerItem(Icons.people_alt_rounded, 'Guest List', '/guests'),
+          _buildDrawerItem(
+            Icons.attach_money_rounded,
+            'Sales / Payment',
+            '/sales',
+          ),
+          _buildDrawerItem(Icons.analytics_outlined, 'Analytics', '/analytics'),
+        ],
       ),
     );
   }
 
-  Widget _buildDrawerItem(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String route,
-  ) {
-    final isCurrentRoute = ModalRoute.of(context)?.settings.name == route;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: isCurrentRoute ? const Color(0xFF14B8A6).withOpacity(0.1) : null,
+  Widget _buildDrawerItem(IconData icon, String title, String route) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF1E3A8A)),
+      title: Text(
+        title,
+        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
       ),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isCurrentRoute
-              ? const Color(0xFF14B8A6)
-              : const Color(0xFF1E3A8A),
-        ),
-        title: Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w500,
-            color: isCurrentRoute
-                ? const Color(0xFF14B8A6)
-                : const Color(0xFF1E3A8A),
-          ),
-        ),
-        onTap: () {
-          Navigator.pop(context);
-          if (!isCurrentRoute) {
-            try {
-              Navigator.pushReplacementNamed(context, route);
-            } catch (e) {
-              debugPrint('Navigation error: $e');
-            }
-          }
-        },
-      ),
+      onTap: () {
+        Navigator.pop(context);
+        if (ModalRoute.of(context)?.settings.name != route) {
+          Navigator.pushReplacementNamed(context, route);
+        }
+      },
     );
   }
 }

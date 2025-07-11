@@ -21,7 +21,7 @@ class StatCardWidget extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       color: Colors.white,
-      shadowColor: color.withOpacity(0.15),
+      shadowColor: color.withValues(alpha: 0.15),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -30,7 +30,7 @@ class StatCardWidget extends StatelessWidget {
           children: [
             Container(
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
               padding: const EdgeInsets.all(8),

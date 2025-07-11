@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../models/guest.dart';
 import '../models/booking.dart';
+import '../utils/supabase_service.dart';
 
 class GuestManagementPage extends StatefulWidget {
   const GuestManagementPage({super.key});
@@ -46,23 +46,27 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final box = Hive.box<Guest>('guests');
-              if (guest == null) {
-                await box.add(
-                  Guest(
-                    name: nameController.text,
-                    email: emailController.text,
-                    phone: phoneController.text,
-                  ),
+              try {
+                final newGuest = Guest(
+                  id: guest?.id,
+                  name: nameController.text,
+                  email: emailController.text,
+                  phone: phoneController.text,
                 );
-              } else {
-                guest.name = nameController.text;
-                guest.email = emailController.text;
-                guest.phone = phoneController.text;
-                await guest.save();
+
+                if (guest == null) {
+                  await SupabaseService.addGuest(newGuest);
+                } else {
+                  await SupabaseService.updateGuest(guest.id!, newGuest);
+                }
+                if (mounted) Navigator.pop(context);
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
               }
-              Navigator.pop(context);
-              // No setState needed, ValueListenableBuilder will rebuild
             },
             child: Text(guest == null ? 'Add' : 'Update'),
           ),
@@ -72,14 +76,19 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
   }
 
   void _deleteGuest(Guest guest) async {
-    await guest.delete();
-    // No setState needed, ValueListenableBuilder will rebuild
+    try {
+      await SupabaseService.deleteGuest(guest.id!);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting guest: $e')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final guestBox = Hive.box<Guest>('guests');
-    final bookingBox = Hive.box<Booking>('bookings');
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
@@ -165,28 +174,69 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: ValueListenableBuilder(
-                  valueListenable: guestBox.listenable(),
-                  builder: (context, Box<Guest> guestBox, _) {
-                    final guests = guestBox.values.toList();
-                    return ValueListenableBuilder(
-                      valueListenable: bookingBox.listenable(),
-                      builder: (context, Box<Booking> bookingBox, _) {
-                        final bookings = bookingBox.values.toList();
-                        // Pre-group bookings by guest name for fast lookup
+                child: StreamBuilder<List<Guest>>(
+                  stream: SupabaseService.getGuestsStream(),
+                  builder: (context, guestSnapshot) {
+                    return StreamBuilder<List<Booking>>(
+                      stream: SupabaseService.getBookingsStream(),
+                      builder: (context, bookingSnapshot) {
+                        if (guestSnapshot.connectionState ==
+                                ConnectionState.waiting ||
+                            bookingSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        if (guestSnapshot.hasError ||
+                            bookingSnapshot.hasError) {
+                          return Center(
+                            child: Text('Error loading guest data'),
+                          );
+                        }
+
+                        final guests = guestSnapshot.data ?? [];
+                        final bookings = bookingSnapshot.data ?? [];
+
+                        // Pre-group bookings by guest ID for fast lookup
                         final Map<String, int> guestBookingCount = {};
                         for (final b in bookings) {
-                          guestBookingCount[b.guest.name] =
-                              (guestBookingCount[b.guest.name] ?? 0) + 1;
+                          guestBookingCount[b.guest.id ?? ''] =
+                              (guestBookingCount[b.guest.id ?? ''] ?? 0) + 1;
                         }
+
+                        if (guests.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.people_outline,
+                                  size: 64,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No guests found',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
                         return ListView.separated(
                           itemCount: guests.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, index) =>
                               const SizedBox(height: 12),
                           itemBuilder: (context, i) {
                             final guest = guests[i];
                             final bookingCount =
-                                guestBookingCount[guest.name] ?? 0;
+                                guestBookingCount[guest.id ?? ''] ?? 0;
                             return Card(
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
@@ -213,7 +263,9 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
                                           vertical: 4,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Colors.blue.withOpacity(0.1),
+                                          color: Colors.blue.withValues(
+                                            alpha: 0.1,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),

@@ -26,7 +26,7 @@ final ThemeData notionTheme = ThemeData(
     elevation: 2,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-    shadowColor: Colors.black.withOpacity(0.06),
+    shadowColor: Colors.black.withValues(alpha: 0.06),
   ),
   appBarTheme: AppBarTheme(
     backgroundColor: _notionCard,
@@ -38,7 +38,7 @@ final ThemeData notionTheme = ThemeData(
       fontSize: 20,
     ),
     centerTitle: true,
-    shadowColor: Colors.black.withOpacity(0.04),
+    shadowColor: Colors.black.withValues(alpha: 0.04),
   ),
   dividerColor: _notionDivider,
   textTheme: GoogleFonts.interTextTheme().copyWith(

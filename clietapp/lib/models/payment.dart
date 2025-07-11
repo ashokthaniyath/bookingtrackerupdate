@@ -1,29 +1,21 @@
-import 'package:hive/hive.dart';
 import 'guest.dart';
-part 'payment.g.dart';
 
-@HiveType(typeId: 3)
-class Payment extends HiveObject {
-  @HiveField(0)
+class Payment {
+  String? id;
   Guest guest;
-
-  @HiveField(1)
   double amount;
-
-  @HiveField(2)
   String status; // Paid, Pending
-
-  @HiveField(3)
   DateTime date;
 
   Payment({
+    this.id,
     required this.guest,
     required this.amount,
     required this.status,
     required this.date,
   });
 
-  // Backend: Supabase Integration - Serialization methods
+  // Supabase Integration - Serialization methods
   Map<String, dynamic> toSupabase() {
     return {
       'guest_name': guest.name,
@@ -38,6 +30,7 @@ class Payment extends HiveObject {
 
   factory Payment.fromSupabase(Map<String, dynamic> data) {
     return Payment(
+      id: data['id']?.toString(),
       guest: Guest(
         name: data['guest_name'] ?? '',
         email: data['guest_email'],
@@ -46,6 +39,25 @@ class Payment extends HiveObject {
       amount: (data['amount'] ?? 0.0).toDouble(),
       status: data['status'] ?? 'Pending',
       date: DateTime.parse(data['date'] ?? DateTime.now().toIso8601String()),
+    );
+  }
+
+  // Legacy support for existing serialization
+  Map<String, dynamic> toMap() {
+    return {
+      'guest': guest.toMap(),
+      'amount': amount,
+      'status': status,
+      'date': date.toIso8601String(),
+    };
+  }
+
+  factory Payment.fromMap(Map<String, dynamic> map) {
+    return Payment(
+      guest: Guest.fromMap(map['guest'] ?? {}),
+      amount: (map['amount'] ?? 0.0).toDouble(),
+      status: map['status'] ?? 'Pending',
+      date: DateTime.parse(map['date'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

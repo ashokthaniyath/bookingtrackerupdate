@@ -5,6 +5,8 @@ import '../models/booking.dart';
 import '../providers/resort_data_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import '../widgets/custom_bottom_navigation_bar.dart';
+import 'main_scaffold.dart';
 
 class GuestManagementPage extends StatefulWidget {
   const GuestManagementPage({super.key});
@@ -39,6 +41,26 @@ class _GuestManagementPageState extends State<GuestManagementPage>
     _animationController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onTabSelected(int index) {
+    try {
+      // Debug log for navigation tracking
+      print("Navigating from guest management to index: $index");
+
+      // Direct navigation to MainScaffold
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScaffold(initialIndex: index),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+    }
   }
 
   void _showGuestDialog({Guest? guest}) {
@@ -186,14 +208,17 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                   );
                   if (guestIndex != -1) {
                     final updatedGuest = Guest(
+                      id: guest.id, // Preserve the ID
                       name: nameController.text,
                       email: emailController.text,
                       phone: phoneController.text,
                     );
-                    await provider.updateGuest(guestIndex, updatedGuest);
+                    // Use the guest's ID if available, otherwise use a placeholder
+                    final guestId = guest.id ?? guestIndex.toString();
+                    await provider.updateGuest(guestId, updatedGuest);
                   }
                 }
-                Navigator.pop(context);
+                if (mounted) Navigator.pop(context);
                 // Note: setState removed as provider handles state updates
               },
               child: Text(
@@ -248,9 +273,11 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                 (g) => g.email == guest.email,
               );
               if (guestIndex != -1) {
-                await provider.deleteGuest(guestIndex);
+                final guestToDelete = provider.guests[guestIndex];
+                final guestId = guestToDelete.id ?? guestIndex.toString();
+                await provider.deleteGuest(guestId);
               }
-              Navigator.pop(context);
+              if (mounted) Navigator.pop(context);
               // Note: setState removed as provider handles state updates
             },
             child: Text(
@@ -568,14 +595,19 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                   'Analytics',
                   '/analytics',
                 ),
+                const Divider(),
                 _buildDrawerItem(
                   context,
-                  Icons.add_box_rounded,
-                  'Booking',
-                  '/booking-form',
+                  Icons.person_outline,
+                  'Profile',
+                  '/profile',
                 ),
               ],
             ),
+          ),
+          bottomNavigationBar: CustomBottomNavigation(
+            selectedIndex: 1, // Guests are typically index 1, adjust as needed
+            onItemTapped: _onTabSelected,
           ),
         );
       },

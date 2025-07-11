@@ -21,7 +21,7 @@ class CalendarBookingModal extends StatelessWidget {
           ListView.separated(
             shrinkWrap: true,
             itemCount: 2,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, index) => const SizedBox(height: 12),
             itemBuilder: (context, i) => ListTile(
               leading: CircleAvatar(
                 backgroundColor: Colors.purple[100 * (i + 2)],
