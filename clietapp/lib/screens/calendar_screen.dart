@@ -142,7 +142,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             '/sales',
           ),
           _buildDrawerItem(Icons.analytics_outlined, 'Analytics', '/analytics'),
-          _buildDrawerItem(Icons.add_box_rounded, 'Booking', '/booking-form'),
+          _buildDrawerItem(Icons.person_outline, 'Profile', '/profile'),
         ],
       ),
     );

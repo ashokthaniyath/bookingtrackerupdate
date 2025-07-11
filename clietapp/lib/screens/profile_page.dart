@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import '../widgets/custom_bottom_navigation_bar.dart';
+import 'main_scaffold.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -55,6 +57,26 @@ class _ProfilePageState extends State<ProfilePage>
     super.dispose();
   }
 
+  void _onTabSelected(int index) {
+    try {
+      // Debug log for navigation tracking
+      print("Navigating from profile page to index: $index");
+
+      // Direct navigation to MainScaffold
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScaffold(initialIndex: index),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -71,11 +93,14 @@ class _ProfilePageState extends State<ProfilePage>
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF1E3A8A)),
-            onPressed: () => Navigator.pop(context),
+          backgroundColor: Colors.white.withOpacity(0.9),
+          elevation: 4,
+          shadowColor: Colors.black.withOpacity(0.1),
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu, color: Color(0xFF1E3A8A)),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
           ),
           title: Text(
             _isSignedIn ? 'Profile' : (_isSignUpMode ? 'Sign Up' : 'Sign In'),
@@ -92,6 +117,23 @@ class _ProfilePageState extends State<ProfilePage>
                 icon: const Icon(Icons.edit, color: Color(0xFF1E3A8A)),
                 onPressed: _editProfile,
               ),
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Color(0xFF1E3A8A)),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Profile refreshed!',
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
+                    backgroundColor: const Color(0xFF14B8A6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
+              },
+            ),
           ],
         ),
         drawer: _buildDrawer(),
@@ -103,6 +145,10 @@ class _ProfilePageState extends State<ProfilePage>
               child: _isSignedIn ? _buildProfileView() : _buildAuthView(),
             ),
           ),
+        ),
+        bottomNavigationBar: CustomBottomNavigation(
+          selectedIndex: -1, // Profile page doesn't map to main nav items
+          onItemTapped: _onTabSelected,
         ),
       ),
     );
@@ -222,6 +268,9 @@ class _ProfilePageState extends State<ProfilePage>
             child: FadeInAnimation(child: _buildSignOutButton()),
           ),
         ),
+
+        // Bottom spacing for navigation bar
+        const SizedBox(height: 100),
       ],
     );
   }
@@ -418,6 +467,9 @@ class _ProfilePageState extends State<ProfilePage>
 
             // Toggle Auth Mode
             _buildAuthToggle(),
+
+            // Bottom spacing for navigation bar
+            const SizedBox(height: 100),
           ],
         ),
       ),
@@ -739,7 +791,7 @@ class _ProfilePageState extends State<ProfilePage>
             '/sales',
           ),
           _buildDrawerItem(Icons.analytics_outlined, 'Analytics', '/analytics'),
-          _buildDrawerItem(Icons.add_box_rounded, 'Booking', '/booking-form'),
+          _buildDrawerItem(Icons.person_outline, 'Profile', '/profile'),
         ],
       ),
     );

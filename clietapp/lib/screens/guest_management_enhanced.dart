@@ -595,7 +595,6 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                   'Analytics',
                   '/analytics',
                 ),
-                const Divider(),
                 _buildDrawerItem(
                   context,
                   Icons.person_outline,

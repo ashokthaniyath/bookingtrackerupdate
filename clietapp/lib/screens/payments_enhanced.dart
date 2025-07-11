@@ -460,7 +460,6 @@ class _PaymentsPageState extends State<PaymentsPage>
                   'Booking',
                   '/booking-form',
                 ),
-                const Divider(),
                 _buildDrawerItem(
                   context,
                   Icons.person_outline,

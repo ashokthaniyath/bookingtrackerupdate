@@ -1165,7 +1165,7 @@ class _BookingFormPageState extends State<BookingFormPage>
     }
   }
 
-  // UI Enhancement: Modern Drawer
+  // UI Enhancement: Drawer Menu
   Widget _buildDrawer() {
     return Drawer(
       child: ListView(
@@ -1186,21 +1186,43 @@ class _BookingFormPageState extends State<BookingFormPage>
               ),
             ),
           ),
-          _buildDrawerItem(Icons.dashboard, 'Dashboard', '/dashboard'),
-          _buildDrawerItem(Icons.bed_rounded, 'Rooms', '/rooms'),
-          _buildDrawerItem(Icons.people_alt_rounded, 'Guest List', '/guests'),
+          _buildDrawerItem(context, Icons.dashboard, 'Dashboard', '/dashboard'),
+          _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
           _buildDrawerItem(
+            context,
+            Icons.people_alt_rounded,
+            'Guest List',
+            '/guests',
+          ),
+          _buildDrawerItem(
+            context,
             Icons.attach_money_rounded,
             'Sales / Payment',
             '/sales',
           ),
-          _buildDrawerItem(Icons.analytics_outlined, 'Analytics', '/analytics'),
+          _buildDrawerItem(
+            context,
+            Icons.analytics_outlined,
+            'Analytics',
+            '/analytics',
+          ),
+          _buildDrawerItem(
+            context,
+            Icons.person_outline,
+            'Profile',
+            '/profile',
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDrawerItem(IconData icon, String title, String route) {
+  Widget _buildDrawerItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String route,
+  ) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF1E3A8A)),
       title: Text(

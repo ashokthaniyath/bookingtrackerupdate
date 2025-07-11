@@ -653,7 +653,6 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
                     'Analytics',
                     '/analytics',
                   ),
-                  const Divider(),
                   _buildDrawerItem(
                     context,
                     Icons.person_outline,

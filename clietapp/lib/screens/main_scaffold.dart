@@ -63,139 +63,67 @@ class _MainScaffoldState extends State<MainScaffold> {
   // Build drawer for secondary navigation
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
-      backgroundColor: Colors.white,
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1E3A8A), // Deep blue
-              Color(0xFF3B82F6), // Lighter blue
-            ],
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+              ),
+            ),
+            child: Text(
+              'Resort Manager',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            // Drawer Header
-            Container(
-              height: 200,
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(40),
-                    ),
-                    child: const Icon(
-                      Icons.hotel,
-                      size: 40,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Resort Management',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    'Tuesday, July 8, 2025',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Drawer Items
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
-                ),
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    const SizedBox(height: 20),
-                    Text(
-                      'Secondary Navigation',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildDrawerItem(
-                      context,
-                      icon: Icons.bed_outlined,
-                      title: 'Rooms',
-                      subtitle: 'Room Management',
-                      route: '/rooms',
-                    ),
-                    _buildDrawerItem(
-                      context,
-                      icon: Icons.people_outline,
-                      title: 'Guest List',
-                      subtitle: 'Guest Management',
-                      route: '/guests',
-                    ),
-                    _buildDrawerItem(
-                      context,
-                      icon: Icons.payment_outlined,
-                      title: 'Sales & Payment',
-                      subtitle: 'Payment Management',
-                      route: '/payment',
-                    ),
-                    _buildDrawerItem(
-                      context,
-                      icon: Icons.analytics_outlined,
-                      title: 'Analytics',
-                      subtitle: 'Performance Analytics',
-                      route: '/analytics',
-                    ),
-                    const SizedBox(height: 20),
-                    // Divider for profile section
-                    Container(
-                      height: 1,
-                      margin: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.transparent,
-                            Colors.grey.shade300,
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                    _buildDrawerItem(
-                      context,
-                      icon: Icons.person_outline,
-                      title: 'Profile',
-                      subtitle: 'Account Settings',
-                      route: '/profile',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          _buildDrawerItem(
+            context,
+            icon: Icons.dashboard,
+            title: 'Dashboard',
+            subtitle: 'Main Dashboard',
+            route: '/dashboard',
+          ),
+          _buildDrawerItem(
+            context,
+            icon: Icons.bed_outlined,
+            title: 'Rooms',
+            subtitle: 'Room Management',
+            route: '/rooms',
+          ),
+          _buildDrawerItem(
+            context,
+            icon: Icons.people_outline,
+            title: 'Guest List',
+            subtitle: 'Guest Management',
+            route: '/guests',
+          ),
+          _buildDrawerItem(
+            context,
+            icon: Icons.payment_outlined,
+            title: 'Sales & Payment',
+            subtitle: 'Payment Management',
+            route: '/payment',
+          ),
+          _buildDrawerItem(
+            context,
+            icon: Icons.analytics_outlined,
+            title: 'Analytics',
+            subtitle: 'Performance Analytics',
+            route: '/analytics',
+          ),
+          _buildDrawerItem(
+            context,
+            icon: Icons.person_outline,
+            title: 'Profile',
+            subtitle: 'Account Settings',
+            route: '/profile',
+          ),
+        ],
       ),
     );
   }
@@ -207,48 +135,13 @@ class _MainScaffoldState extends State<MainScaffold> {
     required String subtitle,
     required String route,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        color: Colors.grey.shade50,
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: const Color(0xFF14B8A6), size: 24),
-        ),
-        title: Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF1E293B),
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
-        ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: Color(0xFF14B8A6),
-        ),
-        onTap: () {
-          // Bug Prevention: PostFrameCallback for safe navigation
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pop(context); // Close drawer first
-            print("Navigating to $title via route: $route");
-            Navigator.pushNamed(context, route);
-          });
-        },
-      ),
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF007AFF)),
+      title: Text(title, style: GoogleFonts.poppins()),
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.pushNamed(context, route);
+      },
     );
   }
 

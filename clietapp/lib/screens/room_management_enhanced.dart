@@ -468,7 +468,6 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                   'Analytics',
                   '/analytics',
                 ),
-                const Divider(),
                 _buildDrawerItem(
                   context,
                   Icons.person_outline,
