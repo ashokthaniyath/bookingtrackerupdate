@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
 import '../widgets/custom_bottom_navigation_bar.dart';
+import '../widgets/realtime_status_widget.dart';
+import '../widgets/ai_analytics_widget.dart';
 import 'main_scaffold.dart';
 
 class DashboardAnalyticsScreen extends StatefulWidget {
@@ -206,13 +208,28 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
     );
     final revenue = List.filled(6, 0.0);
 
-    // Calculate revenue from paid bookings (assuming ₹1500 per booking)
+    // Calculate revenue from paid bookings based on room type pricing
     for (final b in bookings) {
       if (b.paymentStatus.toLowerCase() == 'paid') {
         for (int i = 0; i < months.length; i++) {
           if (b.checkIn.year == months[i].year &&
               b.checkIn.month == months[i].month) {
-            revenue[i] += 1500.0; // Base rate
+            // Calculate revenue based on room type
+            final nights = b.checkOut.difference(b.checkIn).inDays;
+            double roomRate;
+            switch (b.room.type.toLowerCase()) {
+              case 'suite':
+                roomRate = 7000.0; // ₹7000 per night
+                break;
+              case 'deluxe':
+                roomRate = 6000.0; // ₹6000 per night
+                break;
+              case 'standard':
+              default:
+                roomRate = 5000.0; // ₹5000 per night
+                break;
+            }
+            revenue[i] += nights * roomRate;
           }
         }
       }
@@ -230,6 +247,66 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
         .where((r) => r.status.toLowerCase() == 'occupied')
         .length;
     return (occupied / rooms.length) * 100;
+  }
+
+  int _getAIBookingsCount(List<Booking> bookings) {
+    return bookings
+        .where((b) => b.notes.contains('Created by AI Assistant'))
+        .length;
+  }
+
+  double _getAIConversionRate(List<Booking> bookings) {
+    if (bookings.isEmpty) return 0.0;
+    final aiBookings = _getAIBookingsCount(bookings);
+    return (aiBookings / bookings.length) * 100;
+  }
+
+  List<PieChartSectionData> _getAIBookingDistribution(List<Booking> bookings) {
+    final aiBookings = _getAIBookingsCount(bookings);
+    final manualBookings = bookings.length - aiBookings;
+
+    if (bookings.isEmpty) {
+      return [
+        PieChartSectionData(
+          value: 1,
+          color: Colors.grey.shade400,
+          title: 'No Data',
+          radius: 60,
+          titleStyle: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ];
+    }
+
+    return [
+      if (aiBookings > 0)
+        PieChartSectionData(
+          value: aiBookings.toDouble(),
+          color: const Color(0xFF667EEA),
+          title: '$aiBookings',
+          radius: 60,
+          titleStyle: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      if (manualBookings > 0)
+        PieChartSectionData(
+          value: manualBookings.toDouble(),
+          color: const Color(0xFF14B8A6),
+          title: '$manualBookings',
+          radius: 60,
+          titleStyle: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+    ];
   }
 
   Widget _buildDrawerItem(
@@ -384,10 +461,85 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
                               ),
                             ],
                           ),
+                          const SizedBox(height: 16),
+                          // AI Analytics Row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildMetricCard(
+                                  'AI Bookings',
+                                  _getAIBookingsCount(
+                                    provider.bookings,
+                                  ).toString(),
+                                  Icons.smart_toy,
+                                  const LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2),
+                                    ],
+                                  ),
+                                  'Created by AI Assistant',
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildMetricCard(
+                                  'AI Conversion Rate',
+                                  '${_getAIConversionRate(provider.bookings).toStringAsFixed(1)}%',
+                                  Icons.auto_graph,
+                                  const LinearGradient(
+                                    colors: [
+                                      Color(0xFF8B5CF6),
+                                      Color(0xFF7C3AED),
+                                    ],
+                                  ),
+                                  'AI success rate',
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                   ),
+
+                  // Real-time Status Section
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: AnimationConfiguration.staggeredList(
+                        position: 0,
+                        duration: const Duration(milliseconds: 500),
+                        child: SlideAnimation(
+                          verticalOffset: 30.0,
+                          child: FadeInAnimation(
+                            child: const RealtimeStatusWidget(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                  // AI Analytics Section
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: AnimationConfiguration.staggeredList(
+                        position: 1,
+                        duration: const Duration(milliseconds: 500),
+                        child: SlideAnimation(
+                          verticalOffset: 30.0,
+                          child: FadeInAnimation(
+                            child: const AIAnalyticsWidget(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
                   // Charts Section
                   SliverToBoxAdapter(
@@ -586,6 +738,156 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
                                           ),
                                         ],
                                       ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // AI Bookings Comparison Chart
+                            Container(
+                              margin: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    offset: const Offset(0, 5),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF667EEA),
+                                              Color(0xFF764BA2),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.smart_toy,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'AI vs Manual Bookings',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF1E293B),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    height: 200,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: AspectRatio(
+                                            aspectRatio: 1.0,
+                                            child: PieChart(
+                                              PieChartData(
+                                                sections:
+                                                    _getAIBookingDistribution(
+                                                      provider.bookings,
+                                                    ),
+                                                borderData: FlBorderData(
+                                                  show: false,
+                                                ),
+                                                sectionsSpace: 2,
+                                                centerSpaceRadius: 40,
+                                                pieTouchData: PieTouchData(
+                                                  enabled: false,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 20),
+                                        Expanded(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              _buildLegendItem(
+                                                'AI Bookings',
+                                                _getAIBookingsCount(
+                                                  provider.bookings,
+                                                ),
+                                                const Color(0xFF667EEA),
+                                              ),
+                                              _buildLegendItem(
+                                                'Manual Bookings',
+                                                provider.bookings.length -
+                                                    _getAIBookingsCount(
+                                                      provider.bookings,
+                                                    ),
+                                                const Color(0xFF14B8A6),
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  gradient:
+                                                      const LinearGradient(
+                                                        colors: [
+                                                          Color(0xFF667EEA),
+                                                          Color(0xFF764BA2),
+                                                        ],
+                                                      ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    Text(
+                                                      '${_getAIConversionRate(provider.bookings).toStringAsFixed(1)}%',
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: Colors.white,
+                                                          ),
+                                                    ),
+                                                    Text(
+                                                      'AI Success Rate',
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                            fontSize: 10,
+                                                            color: Colors.white,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],

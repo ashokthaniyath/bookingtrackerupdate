@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/room.dart';
 import '../models/booking.dart';
-import '../utils/supabase_service.dart';
+import '../services/firestore_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
@@ -181,9 +181,13 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                   );
 
                   if (room == null) {
-                    await SupabaseService.addRoom(newRoom);
+                    await FirestoreService.addRoom(newRoom);
                   } else {
-                    await SupabaseService.updateRoom(room.id!, newRoom);
+                    await FirestoreService.updateRoom(room.id!, {
+                      'number': newRoom.number,
+                      'type': newRoom.type,
+                      'status': newRoom.status,
+                    });
                   }
 
                   if (context.mounted) {
@@ -213,7 +217,7 @@ class _RoomManagementPageState extends State<RoomManagementPage>
 
   void _deleteRoom(Room room) async {
     try {
-      await SupabaseService.deleteRoom(room.id!);
+      await FirestoreService.deleteRoom(room.id!);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -288,10 +292,10 @@ class _RoomManagementPageState extends State<RoomManagementPage>
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: StreamBuilder<List<Room>>(
-              stream: SupabaseService.getRoomsStream(),
+              stream: FirestoreService.getRoomsStream(),
               builder: (context, roomSnapshot) {
                 return StreamBuilder<List<Booking>>(
-                  stream: SupabaseService.getBookingsStream(),
+                  stream: FirestoreService.getBookingsStream(),
                   builder: (context, bookingSnapshot) {
                     if (roomSnapshot.connectionState ==
                             ConnectionState.waiting ||

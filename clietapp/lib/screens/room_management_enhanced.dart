@@ -553,153 +553,271 @@ class _RoomManagementPageState extends State<RoomManagementPage>
               DateTime.now().isBefore(b.checkOut),
         );
     final currentBooking = bookingQuery.isNotEmpty ? bookingQuery.first : null;
+    final isAIBooking =
+        currentBooking?.notes.contains('Created by AI Assistant') ?? false;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            offset: const Offset(0, 5),
-            blurRadius: 10,
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                offset: const Offset(0, 5),
+                blurRadius: 10,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => _showRoomDialog(room: room),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Room Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _showRoomDialog(room: room),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, color: statusColor, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            room.status,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: statusColor,
+                    // Room Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(statusIcon, color: statusColor, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                  room.status,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor,
+                                  ),
+                                ),
+                                if (isAIBooking) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF667EEA),
+                                          Color(0xFF764BA2),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(
+                                      Icons.smart_toy,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_vert,
-                        color: const Color(0xFF64748B),
-                        size: 20,
-                      ),
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _showRoomDialog(room: room);
-                        } else if (value == 'delete') {
-                          _deleteRoom(room);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Text('Edit', style: GoogleFonts.poppins()),
                         ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete', style: GoogleFonts.poppins()),
+                        PopupMenuButton<String>(
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: Color(0xFF64748B),
+                            size: 20,
+                          ),
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _showRoomDialog(room: room);
+                            } else if (value == 'delete') {
+                              _deleteRoom(room);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Edit', style: GoogleFonts.poppins()),
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text(
+                                'Delete',
+                                style: GoogleFonts.poppins(),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // Room Number with AI indicator
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Room ${room.number}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Room Type
+                    Text(
+                      room.type,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+
+                    const Spacer(),
+
+                    // Current Guest (if occupied)
+                    if (currentBooking != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Current Guest',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      color: const Color(0xFF64748B),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                if (isAIBooking)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF667EEA),
+                                          Color(0xFF764BA2),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.smart_toy,
+                                          size: 10,
+                                          color: Colors.white,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          'AI',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              currentBooking.guest.name,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: const Color(0xFF1E293B),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-
-                const SizedBox(height: 16),
-
-                // Room Number
-                Text(
-                  'Room ${room.number}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1E293B),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Room Type
-                Text(
-                  room.type,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Current Guest (if occupied)
-                if (currentBooking != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Current Guest',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: const Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          currentBooking.guest.name,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: const Color(0xFF1E293B),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ),
-      ),
+
+        // AI Badge positioned at top-right corner
+        if (isAIBooking)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF667EEA).withValues(alpha: 0.3),
+                    offset: const Offset(0, 2),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.smart_toy, size: 10, color: Colors.white),
+                  const SizedBox(width: 3),
+                  Text(
+                    'AI',
+                    style: GoogleFonts.poppins(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 

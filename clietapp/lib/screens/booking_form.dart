@@ -5,6 +5,7 @@ import '../models/booking.dart';
 import '../models/guest.dart';
 import '../models/room.dart';
 import '../providers/resort_data_provider.dart';
+import '../widgets/smart_booking_assistant.dart';
 
 class BookingFormPage extends StatefulWidget {
   final DateTime? initialDate;
@@ -318,6 +319,20 @@ class _BookingFormPageState extends State<BookingFormPage>
         _guests = provider.guests;
         _rooms = provider.rooms;
 
+        // Bug Prevention: Clear selected room if it's no longer available
+        if (_selectedRoom != null) {
+          final isRoomStillAvailable = _rooms
+              .where((room) => room.status.toLowerCase() != 'occupied')
+              .any((room) => room.number == _selectedRoom!.number);
+          if (!isRoomStillAvailable) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              setState(() {
+                _selectedRoom = null;
+              });
+            });
+          }
+        }
+
         // Bug Prevention: Validate form readiness with null checks
         final isFormReady =
             _selectedGuest != null &&
@@ -396,6 +411,10 @@ class _BookingFormPageState extends State<BookingFormPage>
                       key: _formKey,
                       child: Column(
                         children: [
+                          // AI Smart Booking Assistant
+                          const SmartBookingAssistant(),
+                          const SizedBox(height: 24),
+
                           // UI Enhancement: Guest Selection Card
                           _buildGuestSelectionCard(provider),
                           const SizedBox(height: 20),
@@ -473,31 +492,39 @@ class _BookingFormPageState extends State<BookingFormPage>
               ],
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<Guest>(
-              value: _selectedGuest,
+            DropdownButtonFormField<String>(
+              value: _selectedGuest?.name,
               validator: (value) {
-                if (value == null) {
+                if (value == null || value.isEmpty) {
                   return 'Please select or add a guest';
                 }
                 return null;
               },
               items: [
-                ..._guests.map(
-                  (g) => DropdownMenuItem(
-                    value: g,
-                    child: Text(g.name, style: GoogleFonts.poppins()),
-                  ),
-                ),
-                DropdownMenuItem<Guest>(
-                  value: null,
+                ..._guests
+                    .toList()
+                    .fold<Map<String, Guest>>({}, (map, guest) {
+                      // Ensure unique guest names
+                      map[guest.name] = guest;
+                      return map;
+                    })
+                    .values
+                    .map(
+                      (g) => DropdownMenuItem(
+                        value: g.name,
+                        child: Text(g.name, style: GoogleFonts.poppins()),
+                      ),
+                    ),
+                const DropdownMenuItem<String>(
+                  value: '__ADD_NEW__',
                   child: Row(
                     children: [
-                      const Icon(Icons.add, size: 18, color: Color(0xFF14B8A6)),
-                      const SizedBox(width: 4),
+                      Icon(Icons.add, size: 18, color: Color(0xFF14B8A6)),
+                      SizedBox(width: 4),
                       Text(
                         'Add New Guest',
-                        style: GoogleFonts.poppins(
-                          color: const Color(0xFF14B8A6),
+                        style: TextStyle(
+                          color: Color(0xFF14B8A6),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -505,11 +532,15 @@ class _BookingFormPageState extends State<BookingFormPage>
                   ),
                 ),
               ],
-              onChanged: (g) {
-                if (g == null) {
+              onChanged: (guestName) {
+                if (guestName == '__ADD_NEW__') {
                   _showAddGuestDialog(provider);
-                } else {
-                  setState(() => _selectedGuest = g);
+                } else if (guestName != null) {
+                  final guest = _guests.firstWhere(
+                    (g) => g.name == guestName,
+                    orElse: () => _guests.first,
+                  );
+                  setState(() => _selectedGuest = guest);
                 }
               },
               decoration: InputDecoration(
@@ -633,11 +664,15 @@ class _BookingFormPageState extends State<BookingFormPage>
               ],
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<Room>(
+            DropdownButtonFormField<String>(
               value:
                   _selectedRoom != null &&
-                      _selectedRoom!.status.toLowerCase() != 'occupied'
-                  ? _selectedRoom
+                      _rooms
+                          .where(
+                            (room) => room.status.toLowerCase() != 'occupied',
+                          )
+                          .any((room) => room.number == _selectedRoom!.number)
+                  ? _selectedRoom!.number
                   : null,
               validator: (value) {
                 if (value == null) {
@@ -647,9 +682,16 @@ class _BookingFormPageState extends State<BookingFormPage>
               },
               items: _rooms
                   .where((room) => room.status.toLowerCase() != 'occupied')
+                  .toList()
+                  .fold<Map<String, Room>>({}, (map, room) {
+                    // Ensure unique room numbers by using the room number as key
+                    map[room.number] = room;
+                    return map;
+                  })
+                  .values
                   .map((room) {
                     return DropdownMenuItem(
-                      value: room,
+                      value: room.number,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -665,8 +707,12 @@ class _BookingFormPageState extends State<BookingFormPage>
                     );
                   })
                   .toList(),
-              onChanged: (room) {
-                if (room != null) {
+              onChanged: (roomNumber) {
+                if (roomNumber != null) {
+                  final room = _rooms.firstWhere(
+                    (r) => r.number == roomNumber,
+                    orElse: () => _rooms.first,
+                  );
                   setState(() {
                     _selectedRoom = room;
                     _selectedRoomType = room.type;
@@ -1094,7 +1140,7 @@ class _BookingFormPageState extends State<BookingFormPage>
       await provider.addBooking(booking);
 
       // Update room status to occupied
-      await provider.updateRoomStatus(room.number, 'Occupied');
+      await provider.updateRoomStatusByNumber(room.number, 'Occupied');
 
       // Close loading dialog
       if (mounted) Navigator.pop(context);
@@ -1127,7 +1173,36 @@ class _BookingFormPageState extends State<BookingFormPage>
         "Form Saved Successfully - Booking created for ${guest.name} in Room ${room.number}",
       );
 
-      Navigator.pop(context);
+      // Clear form and show success state
+      if (mounted) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (mounted) {
+          // Reset form to allow new booking
+          setState(() {
+            _selectedGuest = null;
+            _selectedRoom = null;
+            _selectedRoomType = null;
+            _checkInDate = null;
+            _checkOutDate = null;
+            _notesController.clear();
+            _depositPaid = false;
+            _paymentStatus = 'Pending';
+          });
+
+          // Show additional success feedback
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Form cleared. Ready for next booking!',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
     } catch (e) {
       // Close loading dialog if open
       if (mounted && Navigator.canPop(context)) {

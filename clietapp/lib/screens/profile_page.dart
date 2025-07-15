@@ -2,7 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../widgets/custom_bottom_navigation_bar.dart';
+import '../utils/frontend_test_utils.dart';
 import 'main_scaffold.dart';
+// import '../services/google_auth_service.dart';
+
+// Temporary stub for GoogleAuthService
+class GoogleAuthService {
+  static bool get isSignedIn => false;
+  static String? get userEmail => 'demo@example.com';
+  static String? get userDisplayName => 'Demo User';
+  static String? get userPhotoUrl => null;
+  static Future<bool> signIn() async => true;
+  static Future<void> signOut() async {}
+  static Future<void> disconnect() async {}
+  static Future<Map<String, String>?> getAuthTokens() async => null;
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -30,7 +44,7 @@ class _ProfilePageState extends State<ProfilePage>
   // Profile data
   String _userName = 'Resort Manager';
   String _userEmail = 'manager@resort.com';
-  String _userRole = 'Administrator';
+  final String _userRole = 'Administrator';
 
   @override
   void initState() {
@@ -45,6 +59,19 @@ class _ProfilePageState extends State<ProfilePage>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
+
+    // Check Google Authentication status
+    _checkGoogleAuthStatus();
+  }
+
+  void _checkGoogleAuthStatus() {
+    setState(() {
+      _isSignedIn = GoogleAuthService.isSignedIn;
+      if (_isSignedIn) {
+        _userName = GoogleAuthService.userDisplayName ?? 'Google User';
+        _userEmail = GoogleAuthService.userEmail ?? 'google@example.com';
+      }
+    });
   }
 
   @override
@@ -465,8 +492,18 @@ class _ProfilePageState extends State<ProfilePage>
 
             const SizedBox(height: 20),
 
+            // Google Sign-In Button
+            _buildGoogleSignInButton(),
+
+            const SizedBox(height: 20),
+
             // Toggle Auth Mode
             _buildAuthToggle(),
+
+            const SizedBox(height: 20),
+
+            // Firestore Test Button
+            FrontendTestUtils.buildFirestoreTestButton(context),
 
             // Bottom spacing for navigation bar
             const SizedBox(height: 100),
@@ -856,12 +893,37 @@ class _ProfilePageState extends State<ProfilePage>
     _clearForm();
   }
 
-  void _signOut() {
+  void _signOut() async {
     setState(() {
-      _isSignedIn = false;
-      _isSignUpMode = false;
+      _isLoading = true;
     });
-    _showSuccessSnackBar('You have been signed out successfully.');
+
+    try {
+      // Sign out from Google if currently signed in
+      if (GoogleAuthService.isSignedIn) {
+        await GoogleAuthService.signOut();
+      }
+
+      setState(() {
+        _isSignedIn = false;
+        _isSignUpMode = false;
+        _userName = 'Resort Manager';
+        _userEmail = 'manager@resort.com';
+      });
+
+      _showSuccessSnackBar('You have been signed out successfully.');
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-out failed: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _clearForm() {
@@ -1047,6 +1109,110 @@ class _ProfilePageState extends State<ProfilePage>
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  // Google Sign-In Button
+  Widget _buildGoogleSignInButton() {
+    return Container(
+      width: double.infinity,
+      height: 50,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            offset: const Offset(0, 2),
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          shadowColor: Colors.transparent,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+        onPressed: _isLoading ? null : _handleGoogleSignIn,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Google Logo placeholder (you can add a proper Google logo asset)
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: const Icon(
+                Icons.g_mobiledata,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Continue with Google',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Handle Google Sign-In
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final bool success = await GoogleAuthService.signIn();
+
+      if (success) {
+        setState(() {
+          _isSignedIn = true;
+          _userName = GoogleAuthService.userDisplayName ?? 'Google User';
+          _userEmail = GoogleAuthService.userEmail ?? 'google@example.com';
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully signed in with Google!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In was cancelled'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign-In failed: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 }

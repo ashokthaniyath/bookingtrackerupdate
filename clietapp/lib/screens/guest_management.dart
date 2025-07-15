@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/guest.dart';
 import '../models/booking.dart';
-import '../utils/supabase_service.dart';
+import '../services/firestore_service.dart';
 
 class GuestManagementPage extends StatefulWidget {
   const GuestManagementPage({super.key});
@@ -55,9 +55,13 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
                 );
 
                 if (guest == null) {
-                  await SupabaseService.addGuest(newGuest);
+                  await FirestoreService.addGuest(newGuest);
                 } else {
-                  await SupabaseService.updateGuest(guest.id!, newGuest);
+                  await FirestoreService.updateGuest(guest.id!, {
+                    'name': newGuest.name,
+                    'email': newGuest.email,
+                    'phone': newGuest.phone,
+                  });
                 }
                 if (mounted) Navigator.pop(context);
               } catch (e) {
@@ -77,7 +81,7 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
 
   void _deleteGuest(Guest guest) async {
     try {
-      await SupabaseService.deleteGuest(guest.id!);
+      await FirestoreService.deleteGuest(guest.id!);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -175,10 +179,10 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
               const SizedBox(height: 20),
               Expanded(
                 child: StreamBuilder<List<Guest>>(
-                  stream: SupabaseService.getGuestsStream(),
+                  stream: FirestoreService.getGuestsStream(),
                   builder: (context, guestSnapshot) {
                     return StreamBuilder<List<Booking>>(
-                      stream: SupabaseService.getBookingsStream(),
+                      stream: FirestoreService.getBookingsStream(),
                       builder: (context, bookingSnapshot) {
                         if (guestSnapshot.connectionState ==
                                 ConnectionState.waiting ||

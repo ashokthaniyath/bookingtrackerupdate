@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/user_card.dart';
 import '../widgets/settings_card.dart';
 import '../utils/profile_settings.dart';
-import '../utils/supabase_service.dart';
+import '../services/firestore_service.dart';
+
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart' as launcher;
@@ -144,7 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _exportBookings({required bool asCsv}) async {
     try {
-      final bookings = await SupabaseService.getBookings();
+      final bookings = await FirestoreService.getBookings();
       if (bookings.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -287,7 +288,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 44,
-                    backgroundColor: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                    backgroundColor: const Color(
+                      0xFF007AFF,
+                    ).withValues(alpha: 0.12),
                     child: _avatarPath == null
                         ? Icon(
                             Icons.person,

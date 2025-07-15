@@ -32,6 +32,7 @@ class Guest {
 
   factory Guest.fromMap(Map<String, dynamic> map) {
     return Guest(
+      id: map['id'],
       name: map['name'] ?? '',
       email: map['email'],
       phone: map['phone'],

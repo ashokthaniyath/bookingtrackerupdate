@@ -54,7 +54,13 @@ class Payment {
 
   factory Payment.fromMap(Map<String, dynamic> map) {
     return Payment(
-      guest: Guest.fromMap(map['guest'] ?? {}),
+      id: map['id'],
+      guest: Guest(
+        id: map['guestId'],
+        name: map['guestName'] ?? '',
+        email: map['guestEmail'],
+        phone: map['guestPhone'],
+      ),
       amount: (map['amount'] ?? 0.0).toDouble(),
       status: map['status'] ?? 'Pending',
       date: DateTime.parse(map['date'] ?? DateTime.now().toIso8601String()),

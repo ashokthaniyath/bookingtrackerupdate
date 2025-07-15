@@ -685,6 +685,11 @@ class _GuestManagementPageState extends State<GuestManagementPage>
         .where((b) => DateTime.now().isBefore(b.checkIn))
         .toList();
 
+    // Check if any bookings were created by AI
+    final aiBookings = guestBookings
+        .where((b) => b.notes.contains('Created by AI Assistant'))
+        .toList();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -714,28 +719,59 @@ class _GuestManagementPageState extends State<GuestManagementPage>
               children: [
                 Row(
                   children: [
-                    // Guest Avatar
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Center(
-                        child: Text(
-                          guest.name.isNotEmpty
-                              ? guest.name[0].toUpperCase()
-                              : 'G',
-                          style: GoogleFonts.poppins(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                    // Guest Avatar with AI indicator
+                    Stack(
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(
+                              guest.name.isNotEmpty
+                                  ? guest.name[0].toUpperCase()
+                                  : 'G',
+                              style: GoogleFonts.poppins(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        // AI indicator badge
+                        if (aiBookings.isNotEmpty)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF667EEA),
+                                    Color(0xFF764BA2),
+                                  ],
+                                ),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.smart_toy,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
 
                     const SizedBox(width: 16),
@@ -745,13 +781,55 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            guest.name,
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1E293B),
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  guest.name,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ),
+                              // AI booking indicator
+                              if (aiBookings.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF667EEA),
+                                        Color(0xFF764BA2),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.smart_toy,
+                                        size: 12,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'AI',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -800,9 +878,10 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                   ],
                 ),
 
-                // Booking Status
+                // Booking Status with AI indicators
                 if (activeBookings.isNotEmpty ||
-                    upcomingBookings.isNotEmpty) ...[
+                    upcomingBookings.isNotEmpty ||
+                    aiBookings.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Wrap(
                     spacing: 8,
@@ -837,6 +916,17 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                                   color: const Color(0xFF14B8A6),
                                 ),
                               ),
+                              // Show AI icon if this is an AI booking
+                              if (activeBookings.first.notes.contains(
+                                'Created by AI Assistant',
+                              )) ...[
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.smart_toy,
+                                  size: 12,
+                                  color: Color(0xFF14B8A6),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -867,6 +957,39 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: const Color(0xFFEAB308),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      // AI Bookings summary
+                      if (aiBookings.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.smart_toy,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${aiBookings.length} AI booking${aiBookings.length != 1 ? 's' : ''}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
                                 ),
                               ),
                             ],

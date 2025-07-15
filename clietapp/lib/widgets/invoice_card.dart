@@ -111,7 +111,7 @@ class InvoiceCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '\$${totalAmount.toStringAsFixed(2)}',
+                      '₹${totalAmount.toStringAsFixed(2)}',
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -142,7 +142,7 @@ class InvoiceCard extends StatelessWidget {
                                 style: GoogleFonts.poppins(fontSize: 12),
                               ),
                               Text(
-                                '\$${payment.amount.toStringAsFixed(2)}',
+                                '₹${payment.amount.toStringAsFixed(2)}',
                                 style: GoogleFonts.poppins(fontSize: 12),
                               ),
                             ],

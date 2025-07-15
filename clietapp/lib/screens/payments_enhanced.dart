@@ -212,7 +212,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                                 Expanded(
                                   child: _buildRevenueCard(
                                     'Pending Payments',
-                                    '₹${NumberFormat('#,##,###').format(provider.pendingPayments)}',
+                                    '₹${NumberFormat('#,##,###').format(provider.pendingRevenue)}',
                                     Icons.schedule,
                                     const LinearGradient(
                                       colors: [
@@ -536,250 +536,679 @@ class _PaymentsPageState extends State<PaymentsPage>
   Widget _buildPaymentCard(Booking booking) {
     final statusColor = _getPaymentStatusColor(booking.paymentStatus);
     final statusIcon = _getPaymentStatusIcon(booking.paymentStatus);
-    final amount = 1500.0; // Base amount - you can calculate based on dates
+    // Calculate amount based on room type and nights
+    final nights = booking.checkOut.difference(booking.checkIn).inDays;
+    double roomRate;
+    switch (booking.room.type.toLowerCase()) {
+      case 'suite':
+        roomRate = 7000.0; // ₹7000 per night
+        break;
+      case 'deluxe':
+        roomRate = 6000.0; // ₹6000 per night
+        break;
+      case 'standard':
+      default:
+        roomRate = 5000.0; // ₹5000 per night
+        break;
+    }
+    final amount = nights * roomRate;
+    final isAIBooking = booking.notes.contains('Created by AI Assistant');
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            offset: const Offset(0, 5),
-            blurRadius: 10,
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                offset: const Offset(0, 5),
+                blurRadius: 10,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Guest Info
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Header Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      booking.guest.name,
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1E293B),
+                    // Guest Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              if (isAIBooking) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF667EEA),
+                                        Color(0xFF764BA2),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(
+                                    Icons.smart_toy,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  booking.guest.name,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Room ${booking.room.number}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Room ${booking.room.number}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: const Color(0xFF64748B),
+
+                    // Payment Status
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            booking.paymentStatus,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
 
-                // Payment Status
+                const SizedBox(height: 16),
+
+                // Booking Details
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Column(
                     children: [
-                      Icon(statusIcon, color: statusColor, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        booking.paymentStatus,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Check-in',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat(
+                                  'MMM dd, yyyy',
+                                ).format(booking.checkIn),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Check-out',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat(
+                                  'MMM dd, yyyy',
+                                ).format(booking.checkOut),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Amount and Actions
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total Amount',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '₹${NumberFormat('#,##,###').format(amount)}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF14B8A6),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          if (booking.paymentStatus.toLowerCase() == 'pending')
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF14B8A6),
+                                    Color(0xFF059669),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  // Show confirmation dialog
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      title: Text(
+                                        'Confirm Payment',
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      content: Text(
+                                        'Mark payment as paid for ${booking.guest.name}?\n\nRoom: ${booking.room.number}\nAmount: ₹${NumberFormat('#,##,###').format(amount)}',
+                                        style: GoogleFonts.poppins(),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: Text(
+                                            'Cancel',
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(
+                                              0xFF14B8A6,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: Text(
+                                            'Mark Paid',
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirmed != true) return;
+
+                                  try {
+                                    // Show loading indicator
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (context) => const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Color(0xFF14B8A6),
+                                        ),
+                                      ),
+                                    );
+
+                                    // Mark as paid
+                                    booking.paymentStatus = 'Paid';
+                                    booking.depositPaid = true;
+
+                                    final provider =
+                                        Provider.of<ResortDataProvider>(
+                                          context,
+                                          listen: false,
+                                        );
+
+                                    if (booking.id != null) {
+                                      await provider.updateBooking(
+                                        booking.id!,
+                                        booking,
+                                      );
+                                    }
+
+                                    // Close loading dialog
+                                    if (mounted) Navigator.pop(context);
+
+                                    // Show success message
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.check_circle,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Payment marked as paid for ${booking.guest.name}',
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: const Color(
+                                            0xFF10B981,
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    // Close loading dialog if open
+                                    if (mounted && Navigator.canPop(context)) {
+                                      Navigator.pop(context);
+                                    }
+
+                                    // Show error message
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.error,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Failed to update payment: $e',
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: Text(
+                                  'Mark Paid',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Mark as Pending button for paid payments
+                          if (booking.paymentStatus.toLowerCase() == 'paid')
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFEF4444),
+                                    Color(0xFFDC2626),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  // Show confirmation dialog
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      title: Text(
+                                        'Mark as Pending',
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      content: Text(
+                                        'Mark payment as pending for ${booking.guest.name}?\n\nRoom: ${booking.room.number}\nAmount: ₹${NumberFormat('#,##,###').format(amount)}',
+                                        style: GoogleFonts.poppins(),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: Text(
+                                            'Cancel',
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(
+                                              0xFFEF4444,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: Text(
+                                            'Mark Pending',
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirmed != true) return;
+
+                                  try {
+                                    // Show loading indicator
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (context) => const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Color(0xFFEF4444),
+                                        ),
+                                      ),
+                                    );
+
+                                    // Mark as pending
+                                    booking.paymentStatus = 'Pending';
+                                    booking.depositPaid = false;
+
+                                    final provider =
+                                        Provider.of<ResortDataProvider>(
+                                          context,
+                                          listen: false,
+                                        );
+
+                                    if (booking.id != null) {
+                                      await provider.updateBooking(
+                                        booking.id!,
+                                        booking,
+                                      );
+                                    }
+
+                                    // Close loading dialog
+                                    if (mounted) Navigator.pop(context);
+
+                                    // Show success message
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.pending_actions,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Payment marked as pending for ${booking.guest.name}',
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: const Color(
+                                            0xFFEF4444,
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    // Close loading dialog if open
+                                    if (mounted && Navigator.canPop(context)) {
+                                      Navigator.pop(context);
+                                    }
+
+                                    // Show error message
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.error,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Failed to update payment: $e',
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: Text(
+                                  'Mark Pending',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
 
-            const SizedBox(height: 16),
-
-            // Booking Details
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Check-in',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            DateFormat('MMM dd, yyyy').format(booking.checkIn),
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1E293B),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Check-out',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            DateFormat('MMM dd, yyyy').format(booking.checkOut),
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1E293B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Amount and Actions
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Total Amount',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '₹${NumberFormat('#,##,###').format(amount)}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF14B8A6),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      if (booking.paymentStatus.toLowerCase() == 'pending')
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF14B8A6), Color(0xFF059669)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: () async {
-                              // Mark as paid
-                              booking.paymentStatus = 'Paid';
-                              final provider = Provider.of<ResortDataProvider>(
-                                context,
-                                listen: false,
-                              );
-                              if (booking.id != null) {
-                                await provider.updateBooking(
-                                  booking.id!,
-                                  booking,
-                                );
-                              }
-                            },
-                            child: Text(
-                              'Mark Paid',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                // Deposit Status
+                if (booking.depositPaid) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: Color(0xFF14B8A6),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Deposit Paid',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF14B8A6),
                           ),
                         ),
-                    ],
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+
+        // AI Badge positioned at top-right
+        if (isAIBooking)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF667EEA).withValues(alpha: 0.3),
+                    offset: const Offset(0, 2),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.smart_toy, size: 12, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    'AI',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
             ),
-
-            // Deposit Status
-            if (booking.depositPaid) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      size: 16,
-                      color: Color(0xFF14B8A6),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Deposit Paid',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF14B8A6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }

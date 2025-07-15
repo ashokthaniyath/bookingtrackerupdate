@@ -80,8 +80,19 @@ class Booking {
 
   factory Booking.fromMap(Map<String, dynamic> map) {
     return Booking(
-      guest: Guest.fromMap(map['guest'] ?? {}),
-      room: Room.fromMap(map['room'] ?? {}),
+      id: map['id'],
+      guest: Guest(
+        id: map['guestId'],
+        name: map['guestName'] ?? '',
+        email: map['guestEmail'],
+        phone: map['guestPhone'],
+      ),
+      room: Room(
+        id: map['roomId'],
+        number: map['roomNumber'] ?? '',
+        type: map['roomType'] ?? '',
+        status: 'Occupied', // Assume occupied if in booking
+      ),
       checkIn: DateTime.parse(
         map['checkIn'] ?? DateTime.now().toIso8601String(),
       ),

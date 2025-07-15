@@ -65,10 +65,10 @@ class _InvoicesScreenState extends State<InvoicesScreen>
             builder: (context, provider, child) {
               final bookings = provider.bookings;
               final paidBookings = bookings
-                  .where((b) => b.depositPaid)
+                  .where((b) => b.paymentStatus.toLowerCase() == 'paid')
                   .toList();
               final unpaidBookings = bookings
-                  .where((b) => !b.depositPaid)
+                  .where((b) => b.paymentStatus.toLowerCase() != 'paid')
                   .toList();
 
               return SingleChildScrollView(
@@ -76,13 +76,13 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Summary Cards
+                    // Summary Cards Row 1 - Revenue & Status
                     Row(
                       children: [
                         Expanded(
                           child: _buildSummaryCard(
                             title: 'Total Revenue',
-                            value: '\$${_calculateTotalRevenue(paidBookings)}',
+                            value: '₹${_calculateTotalRevenue(paidBookings)}',
                             icon: Icons.attach_money,
                             color: const Color(0xFF14B8A6),
                           ),
@@ -98,23 +98,63 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+
+                    // Summary Cards Row 2 - AI Analytics
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSummaryCard(
+                            title: 'AI Bookings',
+                            value: '${_getAIBookingsCount(bookings)}',
+                            icon: Icons.smart_toy,
+                            color: const Color(0xFF667EEA),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildSummaryCard(
+                            title: 'AI Revenue',
+                            value: '₹${_calculateAIRevenue(bookings)}',
+                            icon: Icons.auto_awesome,
+                            color: const Color(0xFF764BA2),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
 
                     // Paid Invoices Section
                     _buildSectionHeader('Paid Invoices'),
                     const SizedBox(height: 16),
-                    ...paidBookings.map(
-                      (booking) => _buildInvoiceCard(booking, isPaid: true),
-                    ),
+                    if (paidBookings.isNotEmpty) ...[
+                      ...paidBookings.map(
+                        (booking) => _buildInvoiceCard(booking, isPaid: true),
+                      ),
+                    ] else ...[
+                      _buildEmptyStateCard(
+                        'No paid invoices yet',
+                        Icons.receipt_long,
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 
                     // Pending Invoices Section
                     _buildSectionHeader('Pending Invoices'),
                     const SizedBox(height: 16),
-                    ...unpaidBookings.map(
-                      (booking) => _buildInvoiceCard(booking, isPaid: false),
-                    ),
+                    if (unpaidBookings.isNotEmpty) ...[
+                      ...unpaidBookings.map(
+                        (booking) => _buildInvoiceCard(booking, isPaid: false),
+                      ),
+                    ] else ...[
+                      _buildEmptyStateCard(
+                        'No pending invoices',
+                        Icons.check_circle_outline,
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
 
                     if (bookings.isEmpty)
                       Container(
@@ -245,164 +285,296 @@ class _InvoicesScreenState extends State<InvoicesScreen>
   }
 
   Widget _buildInvoiceCard(Booking booking, {required bool isPaid}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isPaid
-              ? const Color(0xFF14B8A6).withValues(alpha: 0.2)
-              : const Color(0xFFF43F5E).withValues(alpha: 0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, 5),
-            blurRadius: 10,
+    final isAIBooking = booking.notes.contains('Created by AI Assistant');
+
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isPaid
+                  ? const Color(0xFF14B8A6).withValues(alpha: 0.2)
+                  : const Color(0xFFF43F5E).withValues(alpha: 0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                offset: const Offset(0, 5),
+                blurRadius: 10,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Invoice #${(booking.id ?? booking.hashCode.toString()).padLeft(8, '0').toUpperCase()}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1E293B),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            if (isAIBooking) ...[
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Icon(
+                                  Icons.smart_toy,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: Text(
+                                'Invoice #${(booking.id ?? booking.hashCode.toString()).padLeft(8, '0').toUpperCase()}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            if (isAIBooking) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'AI Created',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: Text(
+                                booking.guest.name,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    booking.guest.name,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isPaid
+                          ? const Color(0xFF14B8A6)
+                          : const Color(0xFFF43F5E),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      isPaid ? 'PAID' : 'PENDING',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: isPaid
-                      ? const Color(0xFF14B8A6)
-                      : const Color(0xFFF43F5E),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  isPaid ? 'PAID' : 'PENDING',
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Check-in',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        Text(
+                          '${booking.checkIn.day}/${booking.checkIn.month}/${booking.checkIn.year}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Check-out',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        Text(
+                          '${booking.checkOut.day}/${booking.checkOut.month}/${booking.checkOut.year}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Room',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        Text(
+                          booking.room.number.toString(),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Amount',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
+                  Text(
+                    '₹${_calculateBookingAmount(booking)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF14B8A6),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Check-in',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    Text(
-                      '${booking.checkIn.day}/${booking.checkIn.month}/${booking.checkIn.year}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+        ),
+
+        // AI Badge positioned at top-right for additional emphasis
+        if (isAIBooking)
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF667EEA).withValues(alpha: 0.3),
+                    offset: const Offset(0, 2),
+                    blurRadius: 4,
+                  ),
+                ],
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Check-out',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.smart_toy, size: 12, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    'AI',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
-                    Text(
-                      '${booking.checkOut.day}/${booking.checkOut.month}/${booking.checkOut.year}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Room',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    Text(
-                      booking.room.number.toString(),
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total Amount',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B),
-                ),
-              ),
-              Text(
-                '\$${_calculateBookingAmount(booking)}',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF14B8A6),
-                ),
-              ),
-            ],
+      ],
+    );
+  }
+
+  Widget _buildEmptyStateCard(String message, IconData icon) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 48, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
+            ),
           ),
         ],
       ),
@@ -419,15 +591,66 @@ class _InvoicesScreenState extends State<InvoicesScreen>
 
   String _calculateBookingAmount(Booking booking) {
     final nights = booking.checkOut.difference(booking.checkIn).inDays;
-    const baseRate = 120.0; // Base rate per night
+    double baseRate;
+
+    switch (booking.room.type.toLowerCase()) {
+      case 'suite':
+        baseRate = 7000.0; // ₹7000 per night
+        break;
+      case 'deluxe':
+        baseRate = 6000.0; // ₹6000 per night
+        break;
+      case 'standard':
+      default:
+        baseRate = 5000.0; // ₹5000 per night
+        break;
+    }
+
     final total = nights * baseRate;
     return total.toStringAsFixed(2);
   }
 
   double _calculateBookingAmountDouble(Booking booking) {
     final nights = booking.checkOut.difference(booking.checkIn).inDays;
-    const baseRate = 120.0; // Base rate per night
+    double baseRate;
+
+    switch (booking.room.type.toLowerCase()) {
+      case 'suite':
+        baseRate = 7000.0; // ₹7000 per night
+        break;
+      case 'deluxe':
+        baseRate = 6000.0; // ₹6000 per night
+        break;
+      case 'standard':
+      default:
+        baseRate = 5000.0; // ₹5000 per night
+        break;
+    }
+
     return nights * baseRate;
+  }
+
+  // AI Analytics Methods
+  int _getAIBookingsCount(List<Booking> bookings) {
+    return bookings
+        .where((booking) => booking.notes.contains('Created by AI Assistant'))
+        .length;
+  }
+
+  String _calculateAIRevenue(List<Booking> bookings) {
+    final aiBookings = bookings
+        .where(
+          (booking) =>
+              booking.notes.contains('Created by AI Assistant') &&
+              booking.depositPaid,
+        )
+        .toList();
+
+    double total = 0;
+    for (var booking in aiBookings) {
+      total += _calculateBookingAmountDouble(booking);
+    }
+    return total.toStringAsFixed(2);
   }
 
   // UI Enhancement: Modern Drawer

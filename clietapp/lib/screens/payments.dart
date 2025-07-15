@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/booking.dart';
-import '../utils/supabase_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/resort_data_provider.dart';
 import '../widgets/custom_bottom_navigation_bar.dart';
 
 class PaymentsPage extends StatefulWidget {
@@ -124,22 +124,17 @@ class _PaymentsPageState extends State<PaymentsPage> {
               ),
               const SizedBox(height: 24),
               Expanded(
-                child: StreamBuilder<List<Booking>>(
-                  stream: SupabaseService.getBookingsStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-
-                    final bookings = snapshot.data ?? [];
+                child: Consumer<ResortDataProvider>(
+                  builder: (context, provider, child) {
+                    final payments = provider.payments;
                     final filtered = _filter == 'All'
-                        ? bookings
-                        : bookings
-                              .where((b) => b.paymentStatus == _filter)
+                        ? payments
+                        : payments
+                              .where(
+                                (p) =>
+                                    p.status.toLowerCase() ==
+                                    _filter.toLowerCase(),
+                              )
                               .toList();
 
                     if (filtered.isEmpty) {
@@ -170,7 +165,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                       separatorBuilder: (_, index) =>
                           const SizedBox(height: 12),
                       itemBuilder: (context, i) {
-                        final booking = filtered[i];
+                        final payment = filtered[i];
                         return Card(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
@@ -178,7 +173,8 @@ class _PaymentsPageState extends State<PaymentsPage> {
                           color: Colors.white,
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: booking.paymentStatus == 'Paid'
+                              backgroundColor:
+                                  payment.status.toLowerCase() == 'paid'
                                   ? const Color(
                                       0xFF34D399,
                                     ).withValues(alpha: 0.15)
@@ -186,28 +182,28 @@ class _PaymentsPageState extends State<PaymentsPage> {
                                       0xFFF59E42,
                                     ).withValues(alpha: 0.15),
                               child: Icon(
-                                booking.paymentStatus == 'Paid'
+                                payment.status.toLowerCase() == 'paid'
                                     ? Icons.check_circle_outline
                                     : Icons.pending_actions_outlined,
-                                color: booking.paymentStatus == 'Paid'
+                                color: payment.status.toLowerCase() == 'paid'
                                     ? const Color(0xFF34D399)
                                     : const Color(0xFFF59E42),
                               ),
                             ),
                             title: Text(
-                              booking.guest.name,
+                              payment.guest.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             subtitle: Text(
-                              '${booking.checkIn.day}/${booking.checkIn.month} - ${booking.checkOut.day}/${booking.checkOut.month} • ${booking.room.type} (${booking.room.number})',
+                              '₹${payment.amount.toStringAsFixed(2)} • ${payment.date.day}/${payment.date.month}/${payment.date.year}',
                               style: const TextStyle(color: Colors.grey),
                             ),
                             trailing: Text(
-                              booking.paymentStatus,
+                              payment.status,
                               style: TextStyle(
-                                color: booking.paymentStatus == 'Paid'
+                                color: payment.status.toLowerCase() == 'paid'
                                     ? const Color(0xFF34D399)
                                     : const Color(0xFFF59E42),
                                 fontWeight: FontWeight.bold,

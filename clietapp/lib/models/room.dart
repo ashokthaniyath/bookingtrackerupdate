@@ -11,35 +11,17 @@ class Room {
     required this.status,
   });
 
-  // Supabase Integration - Serialization methods
-  Map<String, dynamic> toSupabase() {
-    return {
-      'number': number,
-      'type': type,
-      'status': status,
-      'created_at': DateTime.now().toIso8601String(),
-    };
-  }
-
-  factory Room.fromSupabase(Map<String, dynamic> data) {
-    return Room(
-      id: data['id']?.toString(),
-      number: data['number'] ?? '',
-      type: data['type'] ?? '',
-      status: data['status'] ?? 'available',
-    );
-  }
-
-  // Legacy support for existing serialization
+  // Local serialization methods
   Map<String, dynamic> toMap() {
-    return {'number': number, 'type': type, 'status': status};
+    return {'id': id, 'number': number, 'type': type, 'status': status};
   }
 
   factory Room.fromMap(Map<String, dynamic> map, {String? firestoreId}) {
     return Room(
+      id: map['id'] ?? firestoreId,
       number: map['number'] ?? '',
       type: map['type'] ?? '',
-      status: map['status'] ?? '',
+      status: map['status'] ?? 'available',
     );
   }
 }
