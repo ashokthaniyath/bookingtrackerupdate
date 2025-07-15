@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/guest.dart';
 import '../models/booking.dart';
-import '../services/firestore_service.dart';
+import '../providers/resort_data_provider.dart';
 
 class GuestManagementPage extends StatefulWidget {
   const GuestManagementPage({super.key});
@@ -47,21 +48,23 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
           ElevatedButton(
             onPressed: () async {
               try {
+                final provider = Provider.of<ResortDataProvider>(
+                  context,
+                  listen: false,
+                );
                 final newGuest = Guest(
-                  id: guest?.id,
+                  id:
+                      guest?.id ??
+                      'guest-${DateTime.now().millisecondsSinceEpoch}',
                   name: nameController.text,
                   email: emailController.text,
                   phone: phoneController.text,
                 );
 
                 if (guest == null) {
-                  await FirestoreService.addGuest(newGuest);
+                  provider.addGuest(newGuest);
                 } else {
-                  await FirestoreService.updateGuest(guest.id!, {
-                    'name': newGuest.name,
-                    'email': newGuest.email,
-                    'phone': newGuest.phone,
-                  });
+                  provider.updateGuest(guest.id!, newGuest);
                 }
                 if (mounted) Navigator.pop(context);
               } catch (e) {
@@ -81,7 +84,8 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
 
   void _deleteGuest(Guest guest) async {
     try {
-      await FirestoreService.deleteGuest(guest.id!);
+      final provider = Provider.of<ResortDataProvider>(context, listen: false);
+      provider.deleteGuest(guest.id!);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -178,127 +182,101 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: StreamBuilder<List<Guest>>(
-                  stream: FirestoreService.getGuestsStream(),
-                  builder: (context, guestSnapshot) {
-                    return StreamBuilder<List<Booking>>(
-                      stream: FirestoreService.getBookingsStream(),
-                      builder: (context, bookingSnapshot) {
-                        if (guestSnapshot.connectionState ==
-                                ConnectionState.waiting ||
-                            bookingSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
+                child: Consumer<ResortDataProvider>(
+                  builder: (context, provider, child) {
+                    final guests = provider.guests;
+                    final bookings = provider.bookings;
 
-                        if (guestSnapshot.hasError ||
-                            bookingSnapshot.hasError) {
-                          return Center(
-                            child: Text('Error loading guest data'),
-                          );
-                        }
+                    // Pre-group bookings by guest ID for fast lookup
+                    final Map<String, int> guestBookingCount = {};
+                    for (final b in bookings) {
+                      guestBookingCount[b.guest.id ?? ''] =
+                          (guestBookingCount[b.guest.id ?? ''] ?? 0) + 1;
+                    }
 
-                        final guests = guestSnapshot.data ?? [];
-                        final bookings = bookingSnapshot.data ?? [];
+                    if (guests.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No guests found',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
 
-                        // Pre-group bookings by guest ID for fast lookup
-                        final Map<String, int> guestBookingCount = {};
-                        for (final b in bookings) {
-                          guestBookingCount[b.guest.id ?? ''] =
-                              (guestBookingCount[b.guest.id ?? ''] ?? 0) + 1;
-                        }
-
-                        if (guests.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                    return ListView.separated(
+                      itemCount: guests.length,
+                      separatorBuilder: (_, index) =>
+                          const SizedBox(height: 12),
+                      itemBuilder: (context, i) {
+                        final guest = guests[i];
+                        final bookingCount =
+                            guestBookingCount[guest.id ?? ''] ?? 0;
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          color: Colors.white,
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.person_outline),
+                            ),
+                            title: Text(
+                              guest.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(guest.email ?? ''),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.people_outline,
-                                  size: 64,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No guests found',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey[600],
+                                if (bookingCount > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '$bookingCount booking(s)',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
                                   ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    color: Color(0xFF007AFF),
+                                  ),
+                                  onPressed: () =>
+                                      _showGuestDialog(guest: guest),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Color(0xFFF43F5E),
+                                  ),
+                                  onPressed: () => _deleteGuest(guest),
                                 ),
                               ],
                             ),
-                          );
-                        }
-
-                        return ListView.separated(
-                          itemCount: guests.length,
-                          separatorBuilder: (_, index) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, i) {
-                            final guest = guests[i];
-                            final bookingCount =
-                                guestBookingCount[guest.id ?? ''] ?? 0;
-                            return Card(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              color: Colors.white,
-                              child: ListTile(
-                                leading: const CircleAvatar(
-                                  child: Icon(Icons.person_outline),
-                                ),
-                                title: Text(
-                                  guest.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                subtitle: Text(guest.email ?? ''),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (bookingCount > 0)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '$bookingCount booking(s)',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit_outlined,
-                                        color: Color(0xFF007AFF),
-                                      ),
-                                      onPressed: () =>
-                                          _showGuestDialog(guest: guest),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: Color(0xFFF43F5E),
-                                      ),
-                                      onPressed: () => _deleteGuest(guest),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                          ),
                         );
                       },
                     );

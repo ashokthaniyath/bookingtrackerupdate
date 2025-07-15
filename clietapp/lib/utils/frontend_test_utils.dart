@@ -1,8 +1,36 @@
 import 'package:flutter/material.dart';
 import '../providers/resort_data_provider.dart';
-import '../services/firestore_service.dart';
+// Firebase temporarily disabled
+// import '../services/firestore_service.dart';
 
 class FrontendTestUtils {
+  /// Firebase test methods temporarily disabled
+  static Future<Map<String, dynamic>> testFirestoreConnection() async {
+    return {
+      'status': 'disabled',
+      'message': 'Firebase temporarily disabled',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+  }
+
+  static Future<Map<String, dynamic>> testCompleteAppInitialization() async {
+    return {
+      'status': 'disabled',
+      'message': 'Firebase temporarily disabled',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+  }
+
+  static Future<Map<String, dynamic>> testAnalyticsRecording() async {
+    return {
+      'status': 'disabled',
+      'message': 'Firebase temporarily disabled',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+  }
+
+  /*
+  // Original Firebase-dependent methods
   /// Test Firestore connection and configuration
   static Future<Map<String, dynamic>> testFirestoreConnection() async {
     try {
@@ -200,4 +228,5 @@ class FrontendTestUtils {
       ),
     );
   }
+  */
 }

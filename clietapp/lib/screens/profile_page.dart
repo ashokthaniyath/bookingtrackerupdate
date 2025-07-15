@@ -502,8 +502,8 @@ class _ProfilePageState extends State<ProfilePage>
 
             const SizedBox(height: 20),
 
-            // Firestore Test Button
-            FrontendTestUtils.buildFirestoreTestButton(context),
+            // Firestore Test Button - temporarily disabled
+            // FrontendTestUtils.buildFirestoreTestButton(context),
 
             // Bottom spacing for navigation bar
             const SizedBox(height: 100),

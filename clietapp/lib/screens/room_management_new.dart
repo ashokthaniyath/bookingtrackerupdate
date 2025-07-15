@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/room.dart';
 import '../models/booking.dart';
-import '../services/firestore_service.dart';
+// import '../services/firestore_service.dart'; // Firebase temporarily disabled
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:provider/provider.dart';
+import '../providers/resort_data_provider.dart';
 
 class RoomManagementPage extends StatefulWidget {
   const RoomManagementPage({super.key});
@@ -181,13 +183,21 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                   );
 
                   if (room == null) {
-                    await FirestoreService.addRoom(newRoom);
+                    Provider.of<ResortDataProvider>(
+                      context,
+                      listen: false,
+                    ).addRoom(newRoom);
                   } else {
-                    await FirestoreService.updateRoom(room.id!, {
-                      'number': newRoom.number,
-                      'type': newRoom.type,
-                      'status': newRoom.status,
-                    });
+                    final updatedRoom = Room(
+                      id: room.id,
+                      number: newRoom.number,
+                      type: newRoom.type,
+                      status: newRoom.status,
+                    );
+                    Provider.of<ResortDataProvider>(
+                      context,
+                      listen: false,
+                    ).updateRoom(room.id!, updatedRoom);
                   }
 
                   if (context.mounted) {
@@ -217,7 +227,10 @@ class _RoomManagementPageState extends State<RoomManagementPage>
 
   void _deleteRoom(Room room) async {
     try {
-      await FirestoreService.deleteRoom(room.id!);
+      Provider.of<ResortDataProvider>(
+        context,
+        listen: false,
+      ).deleteRoom(room.id!);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -291,185 +304,163 @@ class _RoomManagementPageState extends State<RoomManagementPage>
         child: SafeArea(
           child: FadeTransition(
             opacity: _fadeAnimation,
-            child: StreamBuilder<List<Room>>(
-              stream: FirestoreService.getRoomsStream(),
-              builder: (context, roomSnapshot) {
-                return StreamBuilder<List<Booking>>(
-                  stream: FirestoreService.getBookingsStream(),
-                  builder: (context, bookingSnapshot) {
-                    if (roomSnapshot.connectionState ==
-                            ConnectionState.waiting ||
-                        bookingSnapshot.connectionState ==
-                            ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+            child: Consumer<ResortDataProvider>(
+              builder: (context, provider, child) {
+                final rooms = provider.rooms;
+                final bookings = provider.bookings;
 
-                    if (roomSnapshot.hasError || bookingSnapshot.hasError) {
-                      return Center(child: Text('Error loading room data'));
-                    }
+                if (!provider.isInitialized) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                    final rooms = roomSnapshot.data ?? [];
-                    final bookings = bookingSnapshot.data ?? [];
-
-                    return CustomScrollView(
-                      slivers: [
-                        // UI Enhancement: Modern App Bar with Drawer
-                        SliverAppBar(
-                          expandedHeight: 120,
-                          floating: false,
-                          pinned: true,
-                          backgroundColor: Colors.transparent,
-                          elevation: 0,
-                          leading: Builder(
-                            builder: (context) => IconButton(
-                              icon: const Icon(
-                                Icons.menu,
-                                color: Color(0xFF1E3A8A),
-                              ),
-                              onPressed: () =>
-                                  Scaffold.of(context).openDrawer(),
-                            ),
+                return CustomScrollView(
+                  slivers: [
+                    // UI Enhancement: Modern App Bar with Drawer
+                    SliverAppBar(
+                      expandedHeight: 120,
+                      floating: false,
+                      pinned: true,
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      leading: Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(
+                            Icons.menu,
+                            color: Color(0xFF1E3A8A),
                           ),
-                          flexibleSpace: FlexibleSpaceBar(
-                            title: Text(
-                              'Rooms',
-                              style: GoogleFonts.poppins(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF1E3A8A),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      flexibleSpace: FlexibleSpaceBar(
+                        title: Text(
+                          'Rooms',
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E3A8A),
+                          ),
+                        ),
+                        centerTitle: true,
+                      ),
+                      actions: [
+                        // UI Enhancement: Floating Add Button
+                        Container(
+                          margin: const EdgeInsets.only(right: 16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF14B8A6), Color(0xFF06B6D4)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF14B8A6,
+                                ).withValues(alpha: 0.3),
+                                offset: const Offset(0, 4),
+                                blurRadius: 12,
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            onPressed: () => _showRoomDialog(),
+                            icon: const Icon(Icons.add, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // UI Enhancement: Stats Cards
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatsCard(
+                                'Total Rooms',
+                                rooms.length.toString(),
+                                Icons.bed,
+                                const Color(0xFF1E3A8A),
                               ),
                             ),
-                            centerTitle: true,
-                          ),
-                          actions: [
-                            // UI Enhancement: Floating Add Button
-                            Container(
-                              margin: const EdgeInsets.only(right: 16),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF14B8A6),
-                                    Color(0xFF06B6D4),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFF14B8A6,
-                                    ).withValues(alpha: 0.3),
-                                    offset: const Offset(0, 4),
-                                    blurRadius: 12,
-                                  ),
-                                ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildStatsCard(
+                                'Available',
+                                rooms
+                                    .where(
+                                      (r) =>
+                                          r.status.toLowerCase() == 'available',
+                                    )
+                                    .length
+                                    .toString(),
+                                Icons.check_circle,
+                                const Color(0xFF14B8A6),
                               ),
-                              child: IconButton(
-                                onPressed: () => _showRoomDialog(),
-                                icon: const Icon(
-                                  Icons.add,
-                                  color: Colors.white,
-                                ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildStatsCard(
+                                'Occupied',
+                                rooms
+                                    .where(
+                                      (r) =>
+                                          r.status.toLowerCase() == 'occupied',
+                                    )
+                                    .length
+                                    .toString(),
+                                Icons.person,
+                                const Color(0xFFF43F5E),
                               ),
                             ),
                           ],
                         ),
+                      ),
+                    ),
 
-                        // UI Enhancement: Stats Cards
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildStatsCard(
-                                    'Total Rooms',
-                                    rooms.length.toString(),
-                                    Icons.bed,
-                                    const Color(0xFF1E3A8A),
-                                  ),
+                    // UI Enhancement: Rooms Grid with Animations
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: AnimationLimiter(
+                        child: SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.85,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                              ),
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            if (index >= rooms.length) {
+                              return const SizedBox();
+                            }
+                            final room = rooms[index];
+
+                            return AnimationConfiguration.staggeredGrid(
+                              position: index,
+                              duration: const Duration(milliseconds: 500),
+                              columnCount: 2,
+                              child: SlideAnimation(
+                                verticalOffset: 50.0,
+                                child: FadeInAnimation(
+                                  child: _buildRoomCard(room, bookings),
                                 ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _buildStatsCard(
-                                    'Available',
-                                    rooms
-                                        .where(
-                                          (r) =>
-                                              r.status.toLowerCase() ==
-                                              'available',
-                                        )
-                                        .length
-                                        .toString(),
-                                    Icons.check_circle,
-                                    const Color(0xFF14B8A6),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _buildStatsCard(
-                                    'Occupied',
-                                    rooms
-                                        .where(
-                                          (r) =>
-                                              r.status.toLowerCase() ==
-                                              'occupied',
-                                        )
-                                        .length
-                                        .toString(),
-                                    Icons.person,
-                                    const Color(0xFFF43F5E),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          }, childCount: rooms.length),
                         ),
+                      ),
+                    ),
 
-                        // UI Enhancement: Rooms Grid with Animations
-                        SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          sliver: AnimationLimiter(
-                            child: SliverGrid(
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    childAspectRatio: 0.85,
-                                    crossAxisSpacing: 16,
-                                    mainAxisSpacing: 16,
-                                  ),
-                              delegate: SliverChildBuilderDelegate((
-                                context,
-                                index,
-                              ) {
-                                if (index >= rooms.length) {
-                                  return const SizedBox();
-                                }
-                                final room = rooms[index];
-
-                                return AnimationConfiguration.staggeredGrid(
-                                  position: index,
-                                  duration: const Duration(milliseconds: 500),
-                                  columnCount: 2,
-                                  child: SlideAnimation(
-                                    verticalOffset: 50.0,
-                                    child: FadeInAnimation(
-                                      child: _buildRoomCard(room, bookings),
-                                    ),
-                                  ),
-                                );
-                              }, childCount: rooms.length),
-                            ),
-                          ),
-                        ),
-
-                        const SliverToBoxAdapter(
-                          child: SizedBox(
-                            height: 100,
-                          ), // Space for bottom navigation
-                        ),
-                      ],
-                    );
-                  },
+                    const SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 100,
+                      ), // Space for bottom navigation
+                    ),
+                  ],
                 );
               },
             ),

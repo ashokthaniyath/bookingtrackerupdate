@@ -1,3 +1,5 @@
 {
-  "FSharp.suggestGitignore": false
+  "FSharp.suggestGitignore": false,
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "cmake.sourceDirectory": "C:/Users/User/Desktop/booking tracker/bookingtracker/clietapp/linux"
 }

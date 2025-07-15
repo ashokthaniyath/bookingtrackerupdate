@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Firebase temporarily disabled
+// import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking.dart';
 import '../models/room.dart';
 import '../models/guest.dart';
@@ -167,8 +168,14 @@ class ResortDataProvider with ChangeNotifier {
     }
   }
 
-  /// Load real data from Firestore collections
+  /// Load real data from Firestore collections - temporarily disabled
   Future<void> _loadRealDataFromFirestore() async {
+    // Firebase temporarily disabled - using sample data only
+    debugPrint('🔄 Firebase disabled, using sample data instead');
+    await _loadSampleData();
+    return;
+
+    /*
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
     try {
@@ -272,6 +279,7 @@ class ResortDataProvider with ChangeNotifier {
       debugPrint('❌ Error loading real data from Firestore: $e');
       rethrow;
     }
+    */
   }
 
   /// Set up initial sample data for first-time users (uploads to Firebase)
@@ -292,8 +300,18 @@ class ResortDataProvider with ChangeNotifier {
     }
   }
 
-  /// Method to clear all data and start fresh (for testing)
+  /// Method to clear all data and start fresh (for testing) - temporarily disabled
   Future<void> clearAllDataAndStartFresh() async {
+    // Firebase temporarily disabled - only clear local data
+    _bookings.clear();
+    _rooms.clear();
+    _guests.clear();
+    _payments.clear();
+    notifyListeners();
+    debugPrint('🗑️ Local data cleared (Firebase disabled)');
+    return;
+
+    /*
     try {
       final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
@@ -326,9 +344,15 @@ class ResortDataProvider with ChangeNotifier {
       debugPrint('❌ Error clearing data: $e');
       rethrow;
     }
+    */
   }
 
   Future<void> _uploadSampleDataToFirebase() async {
+    // Firebase temporarily disabled
+    debugPrint('🔄 Firebase disabled, skipping upload');
+    return;
+
+    /*
     // Import Firebase packages
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
@@ -371,6 +395,7 @@ class ResortDataProvider with ChangeNotifier {
         'date': payment.date.toIso8601String(),
       });
     }
+    */
   }
 
   Future<void> _initializeRealtimeService() async {

@@ -3,13 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/user_card.dart';
 import '../widgets/settings_card.dart';
 import '../utils/profile_settings.dart';
-import '../services/firestore_service.dart';
+// import '../services/firestore_service.dart'; // Firebase temporarily disabled
 
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart' as launcher;
 import 'package:provider/provider.dart';
 import '../utils/theme_notifier.dart';
+import '../providers/resort_data_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -145,7 +146,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _exportBookings({required bool asCsv}) async {
     try {
-      final bookings = await FirestoreService.getBookings();
+      final resortProvider = Provider.of<ResortDataProvider>(
+        context,
+        listen: false,
+      );
+      final bookings = resortProvider.bookings;
       if (bookings.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
