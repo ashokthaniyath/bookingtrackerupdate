@@ -945,12 +945,6 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen>
                   ),
                   _buildDrawerItem(
                     context,
-                    Icons.attach_money_rounded,
-                    'Sales / Payment',
-                    '/sales',
-                  ),
-                  _buildDrawerItem(
-                    context,
                     Icons.analytics_outlined,
                     'Analytics',
                     '/analytics',

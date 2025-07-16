@@ -19,7 +19,7 @@ void main() {
     test('should process natural language booking request', () async {
       // Arrange
       final input =
-          "I need a deluxe room for John Doe from tomorrow for 2 nights";
+          "I need a deluxe room for Shajil Thaniyath from tomorrow for 2 nights";
       final availableRooms = [
         Room(id: '1', number: '101', type: 'Deluxe', status: 'Available'),
       ];
@@ -85,8 +85,8 @@ void main() {
     test('should generate invoice description', () async {
       // Arrange
       final guest = Guest(
-        name: 'John Doe',
-        email: 'john@example.com',
+        name: 'Shajil Thaniyath',
+        email: 'shajil.thaniyath@email.com',
         phone: '1234567890',
       );
       final room = Room(

@@ -102,7 +102,6 @@ class NotionBookApp extends StatelessWidget {
 
               // Legacy routes for compatibility
               '/dashboard': (context) => const MainScaffold(initialIndex: 0),
-              '/sales': (context) => const PaymentsPage(),
               '/policy': (context) => const MainScaffold(initialIndex: 0),
               '/room_status': (context) => const RoomStatusScreen(),
               '/room-status': (context) => const RoomStatusScreen(),

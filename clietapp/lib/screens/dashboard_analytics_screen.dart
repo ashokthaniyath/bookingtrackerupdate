@@ -124,12 +124,7 @@ class _DashboardAnalyticsScreenState extends State<DashboardAnalyticsScreen> {
                 ),
               ),
             ),
-            _buildDrawerItem(
-              context,
-              Icons.attach_money_rounded,
-              'Sales / Payment',
-              '/sales',
-            ),
+
             _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
             _buildDrawerItem(
               context,

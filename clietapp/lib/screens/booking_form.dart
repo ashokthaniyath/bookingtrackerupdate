@@ -6,6 +6,8 @@ import '../models/guest.dart';
 import '../models/room.dart';
 import '../providers/resort_data_provider.dart';
 import '../widgets/smart_booking_assistant.dart';
+import '../widgets/voice_booking_widget.dart';
+import '../services/vertex_ai_service.dart';
 
 class BookingFormPage extends StatefulWidget {
   final DateTime? initialDate;
@@ -415,6 +417,85 @@ class _BookingFormPageState extends State<BookingFormPage>
                           const SmartBookingAssistant(),
                           const SizedBox(height: 24),
 
+                          // Voice Booking Quick Access Card
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.purple.shade50,
+                                  Colors.indigo.shade50,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.purple.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.mic,
+                                  color: Colors.purple.shade600,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Voice Booking Available',
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.purple.shade700,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Create bookings with speech recognition',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                ElevatedButton.icon(
+                                  onPressed: () =>
+                                      _showVoiceBookingDialog(provider),
+                                  icon: Icon(
+                                    Icons.mic_rounded,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    'Start Voice',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.purple.shade600,
+                                    foregroundColor: Colors.white,
+                                    elevation: 2,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
                           // UI Enhancement: Guest Selection Card
                           _buildGuestSelectionCard(provider),
                           const SizedBox(height: 20),
@@ -493,7 +574,11 @@ class _BookingFormPageState extends State<BookingFormPage>
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedGuest?.name,
+              value:
+                  _selectedGuest != null &&
+                      _guests.any((g) => g.name == _selectedGuest!.name)
+                  ? _selectedGuest!.name
+                  : null,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please select or add a guest';
@@ -1271,12 +1356,6 @@ class _BookingFormPageState extends State<BookingFormPage>
           ),
           _buildDrawerItem(
             context,
-            Icons.attach_money_rounded,
-            'Sales / Payment',
-            '/sales',
-          ),
-          _buildDrawerItem(
-            context,
             Icons.analytics_outlined,
             'Analytics',
             '/analytics',
@@ -1311,5 +1390,141 @@ class _BookingFormPageState extends State<BookingFormPage>
         }
       },
     );
+  }
+
+  // Show Voice Booking Dialog
+  void _showVoiceBookingDialog(ResortDataProvider provider) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: VoiceBookingWidget(
+          availableRooms: provider.rooms
+              .where((room) => room.status.toLowerCase() != 'occupied')
+              .toList(),
+          existingGuests: provider.guests,
+          onBookingSuggestion: (suggestion) {
+            Navigator.pop(context);
+            _applyVoiceBookingSuggestion(suggestion, provider);
+          },
+          onClose: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
+
+  // Apply Voice Booking Suggestion
+  void _applyVoiceBookingSuggestion(
+    BookingSuggestion suggestion,
+    ResortDataProvider provider,
+  ) {
+    try {
+      setState(() {
+        // Validate and clean up guest name
+        String cleanGuestName = suggestion.guestName.trim();
+
+        // If guest name contains booking-related words, use a default name
+        final bookingWords = [
+          'reservation',
+          'booking',
+          'suit',
+          'suite',
+          'room',
+          'check',
+          'today',
+          'tomorrow',
+        ];
+        if (bookingWords.any(
+          (word) => cleanGuestName.toLowerCase().contains(word),
+        )) {
+          cleanGuestName = 'Voice Booking Guest';
+        }
+
+        // Find or create guest
+        final existingGuest = provider.guests.firstWhere(
+          (guest) => guest.name.toLowerCase() == cleanGuestName.toLowerCase(),
+          orElse: () => Guest(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            name: cleanGuestName,
+            email:
+                '${cleanGuestName.toLowerCase().replaceAll(' ', '.')}@example.com',
+            phone: '+1234567890',
+          ),
+        );
+
+        // Set guest
+        _selectedGuest = existingGuest;
+
+        // Find room by type or availability
+        final availableRooms = provider.rooms
+            .where((room) => room.status.toLowerCase() != 'occupied')
+            .toList();
+
+        Room? selectedRoom;
+        if (suggestion.roomType != null) {
+          selectedRoom = availableRooms.firstWhere(
+            (room) => room.type.toLowerCase().contains(
+              suggestion.roomType!.toLowerCase(),
+            ),
+            orElse: () => availableRooms.isNotEmpty
+                ? availableRooms.first
+                : Room(
+                    id: 'temp',
+                    number: '101',
+                    type: suggestion.roomType ?? 'Standard',
+                    status: 'Available',
+                    pricePerNight: 100.0,
+                  ),
+          );
+        } else if (availableRooms.isNotEmpty) {
+          selectedRoom = availableRooms.first;
+        }
+
+        _selectedRoom = selectedRoom;
+        _selectedRoomType = selectedRoom?.type;
+
+        // Set dates
+        _checkInDate = suggestion.checkInDate;
+        _checkOutDate = suggestion.checkOutDate;
+      });
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Voice booking applied! Review and save to confirm.',
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error applying voice booking suggestion: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error applying voice booking. Please try again.',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 }

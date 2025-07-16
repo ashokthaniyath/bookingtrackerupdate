@@ -16,7 +16,6 @@ class CustomBottomNavigation extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Container(
         height: 80,
-        width: MediaQuery.of(context).size.width - 32,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],

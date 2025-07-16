@@ -41,7 +41,14 @@ class _PaymentsPageState extends State<PaymentsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF007AFF)),
-        title: const Text('Payments'),
+        title: const Text(
+          'Sales & Payments',
+          style: TextStyle(
+            color: Color(0xFF1E3A8A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
       ),
       drawer: Drawer(
         child: ListView(

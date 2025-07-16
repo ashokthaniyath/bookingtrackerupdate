@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../providers/resort_data_provider.dart';
 import '../models/booking.dart';
+import '../models/payment.dart';
+import '../services/pdf_generation_service.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -15,6 +19,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  String _paymentFilter = 'All'; // Payment filter state
 
   @override
   void initState() {
@@ -508,6 +513,57 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              // Payment Management & PDF Actions
+              Row(
+                children: [
+                  // Payment Status Toggle
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _togglePaymentStatus(booking),
+                      icon: Icon(
+                        isPaid ? Icons.check_circle : Icons.schedule,
+                        size: 16,
+                      ),
+                      label: Text(
+                        isPaid ? 'Mark Pending' : 'Mark Paid',
+                        style: GoogleFonts.poppins(fontSize: 12),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isPaid
+                            ? const Color(0xFFF43F5E)
+                            : const Color(0xFF14B8A6),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // PDF Generation
+                  ElevatedButton.icon(
+                    onPressed: () => _generateInvoicePDF(booking),
+                    icon: const Icon(Icons.picture_as_pdf, size: 16),
+                    label: Text(
+                      'PDF',
+                      style: GoogleFonts.poppins(fontSize: 12),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -630,6 +686,163 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     return nights * baseRate;
   }
 
+  // Payment Management Methods
+  void _togglePaymentStatus(Booking booking) async {
+    try {
+      final provider = Provider.of<ResortDataProvider>(context, listen: false);
+      final newStatus = booking.paymentStatus.toLowerCase() == 'paid'
+          ? 'pending'
+          : 'paid';
+
+      // Update the booking's payment status
+      final updatedBooking = Booking(
+        id: booking.id,
+        guest: booking.guest,
+        room: booking.room,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        notes: booking.notes,
+        depositPaid: newStatus == 'paid',
+        paymentStatus: newStatus,
+      );
+
+      await provider.updateBooking(booking.id!, updatedBooking);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Payment status updated to ${newStatus.toUpperCase()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF14B8A6),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error updating payment status: $e',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFF43F5E),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  // PDF Generation Method
+  Future<void> _generateInvoicePDF(Booking booking) async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'Generating PDF Invoice...',
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF6366F1),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Create a payment object for the booking
+      final payment = Payment(
+        id: null,
+        guest: booking.guest,
+        amount: _calculateBookingAmountDouble(booking),
+        status: booking.paymentStatus,
+        date: DateTime.now(),
+      );
+
+      // Generate PDF bytes
+      final pdfBytes = await PDFGenerationService.generateInvoicePDF(
+        booking: booking,
+        payment: payment,
+      );
+
+      // Save PDF to device
+      final fileName =
+          'Invoice_${booking.guest.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final savedPath = await PDFGenerationService.savePDFToFile(
+        pdfBytes,
+        fileName,
+      );
+
+      if (mounted) {
+        // Different messages for web vs desktop/mobile
+        final isWebPlatform = kIsWeb;
+        final primaryMessage = isWebPlatform
+            ? 'PDF Invoice downloaded successfully! ✓'
+            : 'PDF Invoice generated successfully! ✓';
+        final secondaryMessage = isWebPlatform
+            ? 'Check your Downloads folder'
+            : 'Saved to: ${savedPath.split('/').last}';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  primaryMessage,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  secondaryMessage,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF14B8A6),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error generating PDF: $e',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFF43F5E),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   // AI Analytics Methods
   int _getAIBookingsCount(List<Booking> bookings) {
     return bookings
@@ -677,11 +890,6 @@ class _InvoicesScreenState extends State<InvoicesScreen>
           _buildDrawerItem(Icons.dashboard, 'Dashboard', '/dashboard'),
           _buildDrawerItem(Icons.bed_rounded, 'Rooms', '/rooms'),
           _buildDrawerItem(Icons.people_alt_rounded, 'Guest List', '/guests'),
-          _buildDrawerItem(
-            Icons.attach_money_rounded,
-            'Sales / Payment',
-            '/sales',
-          ),
           _buildDrawerItem(Icons.analytics_outlined, 'Analytics', '/analytics'),
           _buildDrawerItem(Icons.person_outline, 'Profile', '/profile'),
         ],

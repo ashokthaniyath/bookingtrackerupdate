@@ -248,11 +248,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _buildDrawerItem(Icons.dashboard, 'Dashboard', '/dashboard'),
           _buildDrawerItem(Icons.bed_rounded, 'Rooms', '/rooms'),
           _buildDrawerItem(Icons.people_alt_rounded, 'Guest List', '/guests'),
-          _buildDrawerItem(
-            Icons.attach_money_rounded,
-            'Sales / Payment',
-            '/sales',
-          ),
           _buildDrawerItem(Icons.analytics_outlined, 'Analytics', '/analytics'),
           _buildDrawerItem(Icons.person_outline, 'Profile', '/profile'),
         ],

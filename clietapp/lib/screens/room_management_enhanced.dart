@@ -383,10 +383,10 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                         child: SliverGrid(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 0.85,
+                                crossAxisCount: 1,
+                                childAspectRatio: 1.5,
                                 crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
+                                mainAxisSpacing: 24,
                               ),
                           delegate: SliverChildBuilderDelegate((
                             context,
@@ -458,12 +458,6 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                 ),
                 _buildDrawerItem(
                   context,
-                  Icons.attach_money_rounded,
-                  'Sales / Payment',
-                  '/sales',
-                ),
-                _buildDrawerItem(
-                  context,
                   Icons.analytics_outlined,
                   'Analytics',
                   '/analytics',
@@ -494,6 +488,7 @@ class _RoomManagementPageState extends State<RoomManagementPage>
     Color color,
   ) {
     return Container(
+      height: 200, // Increased height for taller cards
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -507,6 +502,8 @@ class _RoomManagementPageState extends State<RoomManagementPage>
         ],
       ),
       child: Column(
+        mainAxisAlignment:
+            MainAxisAlignment.center, // Center content vertically
         children: [
           Container(
             padding: const EdgeInsets.all(12),
@@ -580,7 +577,7 @@ class _RoomManagementPageState extends State<RoomManagementPage>
               borderRadius: BorderRadius.circular(20),
               onTap: () => _showRoomDialog(room: room),
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -674,7 +671,7 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                           child: Text(
                             'Room ${room.number}',
                             style: GoogleFonts.poppins(
-                              fontSize: 20,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: const Color(0xFF1E293B),
                             ),
@@ -689,7 +686,7 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                     Text(
                       room.type,
                       style: GoogleFonts.poppins(
-                        fontSize: 14,
+                        fontSize: 12,
                         color: const Color(0xFF64748B),
                       ),
                     ),
@@ -698,9 +695,9 @@ class _RoomManagementPageState extends State<RoomManagementPage>
 
                     // Current Guest (if occupied)
                     if (currentBooking != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(12),
@@ -762,7 +759,7 @@ class _RoomManagementPageState extends State<RoomManagementPage>
                             Text(
                               currentBooking.guest.name,
                               style: GoogleFonts.poppins(
-                                fontSize: 12,
+                                fontSize: 10,
                                 color: const Color(0xFF1E293B),
                                 fontWeight: FontWeight.w600,
                               ),

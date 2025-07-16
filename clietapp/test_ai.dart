@@ -21,7 +21,7 @@ void main() async {
 
     print('\n🧠 Testing AI booking request...');
     final suggestion = await VertexAIService.processNaturalLanguageBooking(
-      'I need a deluxe room for John Doe from tomorrow for 2 nights',
+      'I need a deluxe room for Shajil Thaniyath from tomorrow for 2 nights',
       rooms,
       guests,
     );

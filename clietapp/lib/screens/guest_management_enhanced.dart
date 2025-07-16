@@ -585,12 +585,6 @@ class _GuestManagementPageState extends State<GuestManagementPage>
                 ),
                 _buildDrawerItem(
                   context,
-                  Icons.attach_money_rounded,
-                  'Sales / Payment',
-                  '/sales',
-                ),
-                _buildDrawerItem(
-                  context,
                   Icons.analytics_outlined,
                   'Analytics',
                   '/analytics',

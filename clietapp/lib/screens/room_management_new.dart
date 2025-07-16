@@ -502,12 +502,6 @@ class _RoomManagementPageState extends State<RoomManagementPage>
             ),
             _buildDrawerItem(
               context,
-              Icons.attach_money_rounded,
-              'Sales / Payment',
-              '/sales',
-            ),
-            _buildDrawerItem(
-              context,
               Icons.analytics_outlined,
               'Analytics',
               '/analytics',

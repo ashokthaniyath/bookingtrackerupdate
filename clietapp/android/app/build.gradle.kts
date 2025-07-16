@@ -6,8 +6,8 @@ plugins {
 }
 
 android {
-    namespace = "com.example.test_android_build"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.example.clietapp"
+    compileSdk = 35
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.clietapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 21
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import '../providers/resort_data_provider.dart';
 // Firebase temporarily disabled
 // import '../services/firestore_service.dart';
 

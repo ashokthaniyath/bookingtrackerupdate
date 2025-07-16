@@ -39,12 +39,14 @@ class EnhancedResortDataProvider extends ResortDataProvider {
         .fold(0.0, (sum, p) => sum + p.amount);
   }
 
+  @override
   double get totalOutstanding {
     return payments
         .where((p) => p.status.toLowerCase() == 'overdue')
         .fold(0.0, (sum, p) => sum + p.amount);
   }
 
+  @override
   Map<String, double> get roomStatusData {
     return {
       'Available': availableRooms.toDouble(),
@@ -54,6 +56,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
     };
   }
 
+  @override
   List<Map<String, dynamic>> get revenueData {
     final now = DateTime.now();
     final months = List.generate(6, (index) {
@@ -160,6 +163,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   // ===== BOOKING OPERATIONS =====
 
   /// Add a new booking
+  @override
   Future<String> addBooking(Booking booking) async {
     try {
       final bookingId = await EnhancedFirebaseService.addBooking(booking);
@@ -172,6 +176,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Update an existing booking
+  @override
   Future<void> updateBooking(String bookingId, Booking booking) async {
     try {
       await EnhancedFirebaseService.updateBooking(bookingId, booking);
@@ -183,6 +188,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Delete a booking
+  @override
   Future<void> deleteBooking(String bookingId) async {
     try {
       await EnhancedFirebaseService.deleteBooking(bookingId);
@@ -196,6 +202,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   // ===== GUEST OPERATIONS =====
 
   /// Add a new guest
+  @override
   Future<String> addGuest(Guest guest) async {
     try {
       final guestId = await EnhancedFirebaseService.addGuest(guest);
@@ -208,6 +215,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Update an existing guest
+  @override
   Future<void> updateGuest(String guestId, Guest guest) async {
     try {
       await EnhancedFirebaseService.updateGuest(guestId, guest);
@@ -219,6 +227,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Delete a guest
+  @override
   Future<void> deleteGuest(String guestId) async {
     try {
       await EnhancedFirebaseService.deleteGuest(guestId);
@@ -232,6 +241,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   // ===== ROOM OPERATIONS =====
 
   /// Add a new room
+  @override
   Future<String> addRoom(Room room) async {
     try {
       final roomId = await EnhancedFirebaseService.addRoom(room);
@@ -244,6 +254,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Update an existing room
+  @override
   Future<void> updateRoom(String roomId, Room room) async {
     try {
       await EnhancedFirebaseService.updateRoom(roomId, room);
@@ -255,6 +266,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Update room status
+  @override
   Future<void> updateRoomStatus(String roomId, String status) async {
     try {
       await EnhancedFirebaseService.updateRoomStatus(roomId, status);
@@ -266,6 +278,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Delete a room
+  @override
   Future<void> deleteRoom(String roomId) async {
     try {
       await EnhancedFirebaseService.deleteRoom(roomId);
@@ -279,6 +292,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   // ===== PAYMENT OPERATIONS =====
 
   /// Add a new payment
+  @override
   Future<String> addPayment(Payment payment) async {
     try {
       final paymentId = await EnhancedFirebaseService.addPayment(payment);
@@ -306,11 +320,13 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   // ===== QUERY METHODS =====
 
   /// Get available rooms
+  @override
   List<Room> getAvailableRooms() {
     return rooms.where((r) => r.status.toLowerCase() == 'available').toList();
   }
 
   /// Get upcoming check-ins
+  @override
   List<Booking> getUpcomingCheckIns() {
     final today = DateTime.now();
     return bookings
@@ -326,6 +342,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Get upcoming check-outs
+  @override
   List<Booking> getUpcomingCheckOuts() {
     final today = DateTime.now();
     return bookings
@@ -341,12 +358,14 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Get pending payments
+  @override
   List<Payment> getPendingPayments() {
     return payments.where((p) => p.status.toLowerCase() == 'pending').toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
   /// Get active bookings
+  @override
   List<Booking> get activeBookings {
     final now = DateTime.now();
     return bookings
@@ -355,6 +374,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Get today's check-ins
+  @override
   List<Booking> get todayCheckIns {
     final today = DateTime.now();
     return bookings
@@ -368,6 +388,7 @@ class EnhancedResortDataProvider extends ResortDataProvider {
   }
 
   /// Search bookings
+  @override
   List<Booking> searchBookings(String query) {
     if (query.isEmpty) return bookings;
     return bookings.where((booking) {

@@ -104,13 +104,6 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
           _buildDrawerItem(
             context,
-            icon: Icons.payment_outlined,
-            title: 'Sales & Payment',
-            subtitle: 'Payment Management',
-            route: '/payment',
-          ),
-          _buildDrawerItem(
-            context,
             icon: Icons.analytics_outlined,
             title: 'Analytics',
             subtitle: 'Performance Analytics',

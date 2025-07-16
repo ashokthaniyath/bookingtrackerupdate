@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:provider/provider.dart';
-import '../widgets/invoice_card.dart';
 import '../providers/resort_data_provider.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
@@ -56,8 +55,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       _FeatureCard(
         icon: Icons.calendar_month_rounded,
         title: 'Calendar',
-        description:
-            "Visualize bookings\n• Add bookings by date\n• See room availability",
         gradient: const LinearGradient(
           colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
           begin: Alignment.topLeft,
@@ -68,8 +65,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       _FeatureCard(
         icon: Icons.bed_rounded,
         title: 'Rooms',
-        description:
-            "Manage room types & pricing\n• Add/edit types\n• Adjust rates",
         gradient: const LinearGradient(
           colors: [Color(0xFF14B8A6), Color(0xFF06B6D4)],
           begin: Alignment.topLeft,
@@ -80,8 +75,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       _FeatureCard(
         icon: Icons.people_alt_rounded,
         title: 'Guest List',
-        description:
-            "Manage guest details\n• View all customers\n• Link to booking history",
         gradient: const LinearGradient(
           colors: [Color(0xFF3B82F6), Color(0xFF1E40AF)],
           begin: Alignment.topLeft,
@@ -90,22 +83,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         onTap: () => _showFeature(context, 'Guest List', '/guests'),
       ),
       _FeatureCard(
-        icon: Icons.attach_money_rounded,
-        title: 'Sales / Payment',
-        description:
-            "Income & pending payments\n• Charts for earnings\n• Room performance",
-        gradient: const LinearGradient(
-          colors: [Color(0xFF10B981), Color(0xFF059669)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        onTap: () => _showFeature(context, 'Sales / Payment', '/sales'),
-      ),
-      _FeatureCard(
         icon: Icons.analytics_outlined,
         title: 'Analytics',
-        description:
-            "Visualize trends and performance\n• Bookings, occupancy, revenue\n• Interactive charts",
         gradient: const LinearGradient(
           colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
           begin: Alignment.topLeft,
@@ -264,47 +243,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                       ),
                     ),
 
-                    // UI Enhancement: Luxury Invoice Card
-                    SliverToBoxAdapter(
-                      child: AnimationConfiguration.staggeredList(
-                        position: 1,
-                        child: SlideAnimation(
-                          verticalOffset: 50.0,
-                          child: FadeInAnimation(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                              ),
-                              child: Consumer<ResortDataProvider>(
-                                builder: (context, provider, _) {
-                                  // Show recent bookings if available
-                                  if (provider.bookings.isNotEmpty) {
-                                    final recentBooking =
-                                        provider.bookings.first;
-                                    return InvoiceCard(booking: recentBooking);
-                                  }
-                                  // Show placeholder if no bookings
-                                  return Card(
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Text(
-                                        'No recent bookings',
-                                        style: GoogleFonts.poppins(),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
                     // UI Enhancement: Quick Actions Header
                     SliverToBoxAdapter(
                       child: AnimationConfiguration.staggeredList(
@@ -357,15 +295,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
                     // UI Enhancement: Luxury Features Grid
                     SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
                       sliver: AnimationLimiter(
                         child: SliverGrid(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                mainAxisSpacing: 16,
-                                crossAxisSpacing: 16,
-                                childAspectRatio: 1.0,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 1.2,
                               ),
                           delegate: SliverChildBuilderDelegate((
                             context,
@@ -388,8 +326,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
                     const SliverToBoxAdapter(
                       child: SizedBox(
-                        height: 100,
-                      ), // Space for bottom navigation
+                        height: 140,
+                      ), // Extra space for bottom navigation
                     ),
                   ],
                 ),
@@ -406,14 +344,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 class _FeatureCard extends StatefulWidget {
   final IconData icon;
   final String title;
-  final String description;
   final VoidCallback onTap;
   final LinearGradient gradient;
 
   const _FeatureCard({
     required this.icon,
     required this.title,
-    required this.description,
     required this.onTap,
     required this.gradient,
   });
@@ -470,7 +406,7 @@ class _FeatureCardState extends State<_FeatureCard>
                 ],
               ),
               child: Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   gradient: LinearGradient(
@@ -484,37 +420,26 @@ class _FeatureCardState extends State<_FeatureCard>
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // UI Enhancement: Icon with backdrop
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(widget.icon, size: 28, color: Colors.white),
+                      child: Icon(widget.icon, size: 24, color: Colors.white),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     // UI Enhancement: Title with Poppins font
                     Text(
                       widget.title,
                       style: GoogleFonts.poppins(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    // UI Enhancement: Description with better styling
-                    Text(
-                      widget.description,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.9),
-                        height: 1.4,
-                      ),
-                      maxLines: 3,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],

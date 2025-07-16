@@ -645,8 +645,8 @@ class EnhancedFirebaseService {
       await addGuest(
         Guest(
           id: null,
-          name: 'John Doe',
-          email: 'john.doe@email.com',
+          name: 'Shajil Thaniyath',
+          email: 'shajil.thaniyath@email.com',
           phone: '+1-555-0123',
         ),
       );
@@ -654,8 +654,8 @@ class EnhancedFirebaseService {
       await addGuest(
         Guest(
           id: null,
-          name: 'Jane Smith',
-          email: 'jane.smith@email.com',
+          name: 'Ashok Thaniyath',
+          email: 'ashok.thaniyath@email.com',
           phone: '+1-555-0456',
         ),
       );

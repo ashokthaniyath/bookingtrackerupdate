@@ -33,12 +33,21 @@ class VertexAIService {
     List<Guest> existingGuests,
   ) async {
     try {
+      // Check if Vertex AI is initialized, if not use fallback
+      if (!_isInitialized) {
+        debugPrint(
+          '⚠️ Vertex AI not initialized, using fallback booking processing',
+        );
+        return _processFallbackBooking(input, availableRooms, existingGuests);
+      }
+
       final prompt = _buildBookingPrompt(input, availableRooms, existingGuests);
       final response = await _callVertexAI(prompt);
       return _parseBookingSuggestion(response);
     } catch (e) {
       debugPrint('❌ Error processing natural language booking: $e');
-      return BookingSuggestion.error('Failed to process booking request');
+      debugPrint('🔄 Falling back to simple booking processing');
+      return _processFallbackBooking(input, availableRooms, existingGuests);
     }
   }
 
@@ -49,12 +58,19 @@ class VertexAIService {
     List<Room> rooms,
   ) async {
     try {
+      // Check if Vertex AI is initialized, if not use fallback
+      if (!_isInitialized) {
+        debugPrint('⚠️ Vertex AI not initialized, using fallback insights');
+        return _generateFallbackInsights(bookings, payments, rooms);
+      }
+
       final prompt = _buildInsightsPrompt(bookings, payments, rooms);
       final response = await _callVertexAI(prompt);
       return _parseBookingInsights(response);
     } catch (e) {
       debugPrint('❌ Error generating booking insights: $e');
-      return BookingInsights.empty();
+      debugPrint('🔄 Falling back to simple insights');
+      return _generateFallbackInsights(bookings, payments, rooms);
     }
   }
 
@@ -134,7 +150,7 @@ class VertexAIService {
     try {
       final prompt =
           '''
-      Generate a ${messageType} message for this guest:
+      Generate a $messageType message for this guest:
       
       Guest: ${booking.guest.name}
       Room: ${booking.room.number} (${booking.room.type})
@@ -185,6 +201,8 @@ class VertexAIService {
 
     IMPORTANT RULES:
     - Extract the actual guest name from the request (e.g., "Sarah Johnson" from "Book Sarah Johnson...")
+    - Guest name should ONLY contain letters and spaces, NOT numbers or duration words like "nights"
+    - Ignore words like: nights, night, two, three, room, deluxe, suite, standard, tonight, tomorrow
     - If guest exists in the list, use their email; otherwise generate: firstname.lastname@email.com
     - Parse dates carefully: "tomorrow" = ${DateTime.now().add(const Duration(days: 1)).toIso8601String().split('T')[0]}
     - Default to 2 nights if duration not specified
@@ -300,27 +318,67 @@ class VertexAIService {
   static String _createIntelligentBookingResponse(String prompt) {
     try {
       // Extract the actual request from the prompt
-      final requestMatch = RegExp(r'Request: "([^"]*)"').firstMatch(prompt);
+      final requestMatch = RegExp(
+        r'BOOKING REQUEST: "([^"]*)"',
+      ).firstMatch(prompt);
       final userRequest = requestMatch?.group(1) ?? '';
 
       debugPrint('📝 Processing user request: $userRequest');
 
-      // Parse guest name
+      // Parse guest name with better filtering
       String guestName = 'Guest';
       final namePatterns = [
-        RegExp(r'book\s+([A-Za-z]+\s+[A-Za-z]+)', caseSensitive: false),
-        RegExp(r'for\s+([A-Za-z]+\s+[A-Za-z]+)', caseSensitive: false),
-        RegExp(r'([A-Za-z]+\s+[A-Za-z]+)', caseSensitive: false),
+        RegExp(r'book\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)', caseSensitive: false),
+        RegExp(r'for\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)', caseSensitive: false),
+        RegExp(r'reserve\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)', caseSensitive: false),
+        RegExp(r'guest\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)', caseSensitive: false),
       ];
 
       for (final pattern in namePatterns) {
         final match = pattern.firstMatch(userRequest);
         if (match != null) {
-          guestName = match.group(1)!;
-          // Clean up common words
-          if (!guestName.toLowerCase().contains('book') &&
-              !guestName.toLowerCase().contains('room') &&
-              !guestName.toLowerCase().contains('for')) {
+          final potentialName = match.group(1)!.trim();
+          // Filter out common non-name words
+          final excludedWords = [
+            'book',
+            'room',
+            'for',
+            'guest',
+            'reserve',
+            'tonight',
+            'tomorrow',
+            'today',
+            'nights',
+            'night',
+            'deluxe',
+            'suite',
+            'standard',
+            'two',
+            'three',
+            'four',
+            'five',
+            'one',
+            'a',
+            'an',
+            'the',
+          ];
+
+          final nameLower = potentialName.toLowerCase();
+          bool isValidName = true;
+
+          for (final excluded in excludedWords) {
+            if (nameLower == excluded ||
+                nameLower.contains(' $excluded') ||
+                nameLower.contains('$excluded ') ||
+                nameLower.startsWith('$excluded ')) {
+              isValidName = false;
+              break;
+            }
+          }
+
+          // Additional check: name should contain only letters and spaces
+          if (isValidName && RegExp(r'^[A-Za-z\s]+$').hasMatch(potentialName)) {
+            guestName = potentialName;
             break;
           }
         }
@@ -497,6 +555,177 @@ class VertexAIService {
     } catch (e) {
       debugPrint('❌ AI Testing failed: $e');
     }
+  }
+
+  /// Fallback booking processing when Vertex AI is not available
+  static Future<BookingSuggestion> _processFallbackBooking(
+    String input,
+    List<Room> availableRooms,
+    List<Guest> existingGuests,
+  ) async {
+    debugPrint('🔄 Processing booking with fallback method');
+
+    // Simple pattern matching for basic booking requests
+    final inputLower = input.toLowerCase();
+
+    // Extract guest name with better filtering (look for common patterns)
+    String guestName = 'Guest';
+    final namePatterns = [
+      RegExp(r'book\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)', caseSensitive: false),
+      RegExp(r'for\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)', caseSensitive: false),
+      RegExp(r'reserve\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)', caseSensitive: false),
+      RegExp(r'guest\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)', caseSensitive: false),
+    ];
+
+    for (final pattern in namePatterns) {
+      final match = pattern.firstMatch(input);
+      if (match != null && match.group(1) != null) {
+        final potentialName = match.group(1)!.trim();
+
+        // Filter out common non-name words
+        final excludedWords = [
+          'book',
+          'room',
+          'for',
+          'guest',
+          'reserve',
+          'tonight',
+          'tomorrow',
+          'today',
+          'nights',
+          'night',
+          'deluxe',
+          'suite',
+          'standard',
+          'two',
+          'three',
+          'four',
+          'five',
+          'one',
+          'a',
+          'an',
+          'the',
+        ];
+
+        final nameLower = potentialName.toLowerCase();
+        bool isValidName = true;
+
+        for (final excluded in excludedWords) {
+          if (nameLower == excluded ||
+              nameLower.contains(' $excluded') ||
+              nameLower.contains('$excluded ') ||
+              nameLower.startsWith('$excluded ')) {
+            isValidName = false;
+            break;
+          }
+        }
+
+        // Additional check: name should contain only letters and spaces
+        if (isValidName && RegExp(r'^[A-Za-z\s]+$').hasMatch(potentialName)) {
+          guestName = potentialName;
+          break;
+        }
+      }
+    }
+
+    // Extract room type
+    String roomType = 'Standard';
+    if (inputLower.contains('suite')) {
+      roomType = 'Suite';
+    } else if (inputLower.contains('deluxe')) {
+      roomType = 'Deluxe';
+    }
+
+    // Extract dates (use tomorrow as default check-in)
+    DateTime checkIn = DateTime.now().add(const Duration(days: 1));
+    DateTime checkOut = checkIn.add(const Duration(days: 1));
+
+    // Look for date patterns
+    if (inputLower.contains('tonight')) {
+      checkIn = DateTime.now();
+    } else if (inputLower.contains('tomorrow')) {
+      checkIn = DateTime.now().add(const Duration(days: 1));
+    }
+
+    // Look for duration
+    if (inputLower.contains('2 nights') || inputLower.contains('two nights')) {
+      checkOut = checkIn.add(const Duration(days: 2));
+    } else if (inputLower.contains('3 nights') ||
+        inputLower.contains('three nights')) {
+      checkOut = checkIn.add(const Duration(days: 3));
+    }
+
+    return BookingSuggestion(
+      guestName: guestName,
+      guestEmail: null,
+      roomType: roomType,
+      checkInDate: checkIn,
+      checkOutDate: checkOut,
+      notes: 'Processed with fallback booking assistant (Vertex AI offline)',
+      confidence: 70.0,
+      isError: false,
+      errorMessage: null,
+    );
+  }
+
+  /// Fallback insights generation when Vertex AI is not available
+  static Future<BookingInsights> _generateFallbackInsights(
+    List<Booking> bookings,
+    List<Payment> payments,
+    List<Room> rooms,
+  ) async {
+    debugPrint('🔄 Generating insights with fallback method');
+
+    // Simple analytics calculations
+    final totalBookings = bookings.length;
+    final totalRevenue = payments.fold(
+      0.0,
+      (sum, payment) => sum + payment.amount,
+    );
+    final averageBookingValue = totalBookings > 0
+        ? totalRevenue / totalBookings
+        : 0.0;
+
+    // Calculate occupancy rate
+    final totalRooms = rooms.length;
+    final occupiedRooms = bookings
+        .where(
+          (b) =>
+              b.checkIn.isBefore(DateTime.now()) &&
+              b.checkOut.isAfter(DateTime.now()),
+        )
+        .length;
+    final occupancyRate = totalRooms > 0
+        ? (occupiedRooms / totalRooms * 100)
+        : 0.0;
+
+    final summary =
+        '''
+📊 Booking Summary (Offline Analysis):
+• Total Bookings: $totalBookings
+• Total Revenue: ₹${totalRevenue.toStringAsFixed(2)}
+• Average Booking Value: ₹${averageBookingValue.toStringAsFixed(2)}
+• Current Occupancy: ${occupancyRate.toStringAsFixed(1)}%
+    ''';
+
+    final recommendations = [
+      'Monitor booking trends regularly',
+      'Consider promotional offers during low occupancy',
+      'Maintain excellent guest service standards',
+      'Track payment collections closely',
+    ];
+
+    final trends = [
+      'Booking frequency analysis needs AI processing',
+      'Seasonal trends require historical data analysis',
+      'Guest preferences tracking available with AI',
+    ];
+
+    return BookingInsights(
+      summary: summary,
+      recommendations: recommendations,
+      trends: trends,
+    );
   }
 }
 

@@ -1,15 +1,17 @@
 /// Vertex AI Configuration
 /// Configuration settings for Google Cloud Vertex AI integration
 class VertexAIConfig {
-  // API Keys
-  static const String generativeLanguageApiKey =
-      'AIzaSyAvYxXOhT7bg73NGlVvnmfo_bXwfajrsBs';
-  static const String firebaseBrowserKey =
-      'AIzaSyBL3UZWV4mQlxXy9200LAvFDOKBOuOrZFI';
-  static const String firebaseIosKey =
-      'AIzaSyAf7pKPxCe2PB_l9l2HeMQ7cQC4n_HsMwg';
-  static const String firebaseAndroidKey =
-      'AIzaSyBwpk2vC2JZvCaVdJycB4we6Oy0Y2SEzSQ';
+  // UNIFIED API KEY - All Google Cloud Services
+  // Updated: July 16, 2025 - Using user's unified key for all services
+  static const String unifiedApiKey = 'AIzaSyAC6_qZ1iZRXixY77sjHZdnxApD3pLlxcY';
+
+  // Backward compatibility - all services use the unified key
+  static const String generativeLanguageApiKey = unifiedApiKey;
+  static const String speechToTextApiKey = unifiedApiKey;
+  static const String calendarApiKey = unifiedApiKey;
+  static const String firebaseBrowserKey = unifiedApiKey;
+  static const String firebaseIosKey = unifiedApiKey;
+  static const String firebaseAndroidKey = unifiedApiKey;
 
   // Google Cloud Project Configuration
   static const String projectId = 'project-1-c7622'; // Your Firebase project ID

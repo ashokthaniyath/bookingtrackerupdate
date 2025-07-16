@@ -7,11 +7,12 @@ import '../models/booking.dart';
 import '../models/guest.dart';
 import '../models/room.dart';
 import '../models/payment.dart';
+import 'voice_booking_widget.dart';
 
 /// Smart Booking Assistant Widget
 /// Allows natural language booking input with AI processing
 class SmartBookingAssistant extends StatefulWidget {
-  const SmartBookingAssistant({Key? key}) : super(key: key);
+  const SmartBookingAssistant({super.key});
 
   @override
   State<SmartBookingAssistant> createState() => _SmartBookingAssistantState();
@@ -234,6 +235,32 @@ class _SmartBookingAssistantState extends State<SmartBookingAssistant> {
     }
   }
 
+  void _showVoiceInput() {
+    final provider = Provider.of<ResortDataProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: VoiceBookingWidget(
+          availableRooms: provider.rooms
+              .where((room) => room.status.toLowerCase() != 'occupied')
+              .toList(),
+          existingGuests: provider.guests,
+          onBookingSuggestion: (suggestion) {
+            Navigator.pop(context);
+            setState(() {
+              _lastSuggestion = suggestion;
+              _errorMessage = null;
+            });
+          },
+          onClose: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -337,6 +364,7 @@ class _SmartBookingAssistantState extends State<SmartBookingAssistant> {
               Row(
                 children: [
                   Expanded(
+                    flex: 2,
                     child: ElevatedButton.icon(
                       onPressed: _isProcessing ? null : _processBookingRequest,
                       icon: _isProcessing
@@ -361,6 +389,30 @@ class _SmartBookingAssistantState extends State<SmartBookingAssistant> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xFF667EEA),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: ElevatedButton.icon(
+                      onPressed: _isProcessing ? null : _showVoiceInput,
+                      icon: const Icon(Icons.mic, size: 18),
+                      label: Text(
+                        'Voice',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple.shade100,
+                        foregroundColor: Colors.purple.shade700,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(

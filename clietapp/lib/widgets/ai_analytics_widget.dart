@@ -7,7 +7,7 @@ import '../providers/resort_data_provider.dart';
 /// AI Analytics Widget
 /// Displays intelligent insights and recommendations
 class AIAnalyticsWidget extends StatefulWidget {
-  const AIAnalyticsWidget({Key? key}) : super(key: key);
+  const AIAnalyticsWidget({super.key});
 
   @override
   State<AIAnalyticsWidget> createState() => _AIAnalyticsWidgetState();
@@ -206,36 +206,34 @@ class _AIAnalyticsWidgetState extends State<AIAnalyticsWidget> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._insights!.recommendations
-                      .map(
-                        (recommendation) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                margin: const EdgeInsets.only(top: 6, right: 8),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  recommendation,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
-                                ),
-                              ),
-                            ],
+                  ..._insights!.recommendations.map(
+                    (recommendation) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.only(top: 6, right: 8),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
+                          Expanded(
+                            child: Text(
+                              recommendation,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 16),
                 ],
@@ -251,33 +249,31 @@ class _AIAnalyticsWidgetState extends State<AIAnalyticsWidget> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._insights!.trends
-                      .map(
-                        (trend) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                Icons.trending_up,
-                                color: Colors.white.withOpacity(0.8),
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  trend,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
-                                ),
-                              ),
-                            ],
+                  ..._insights!.trends.map(
+                    (trend) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.trending_up,
+                            color: Colors.white.withOpacity(0.8),
+                            size: 16,
                           ),
-                        ),
-                      )
-                      .toList(),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              trend,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ],

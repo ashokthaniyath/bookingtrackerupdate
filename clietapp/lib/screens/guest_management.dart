@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/guest.dart';
-import '../models/booking.dart';
 import '../providers/resort_data_provider.dart';
 
 class GuestManagementPage extends StatefulWidget {
@@ -125,12 +124,6 @@ class _GuestManagementPageState extends State<GuestManagementPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.attach_money_rounded,
-              'Sales / Payment',
-              '/sales',
             ),
             _buildDrawerItem(context, Icons.bed_rounded, 'Rooms', '/rooms'),
             _buildDrawerItem(

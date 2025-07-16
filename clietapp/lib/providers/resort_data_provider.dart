@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 // Firebase temporarily disabled
 // import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking.dart';
@@ -109,10 +111,10 @@ class ResortDataProvider with ChangeNotifier {
     }).toList();
   }
 
-  // Local data initialization with sample data
+  // Local data initialization with persistent data
   Future<void> loadData() async {
     try {
-      await _loadSampleData();
+      await _loadBookingsFromPrefs();
 
       // Initialize real-time service if not already done
       if (!_isInitialized) {
@@ -282,24 +284,6 @@ class ResortDataProvider with ChangeNotifier {
     */
   }
 
-  /// Set up initial sample data for first-time users (uploads to Firebase)
-  Future<void> _setupInitialData() async {
-    try {
-      // Load sample data locally first
-      await _loadSampleData();
-
-      // Upload to Firebase for persistence
-      await _uploadSampleDataToFirebase();
-
-      debugPrint(
-        '✅ Initial sample data setup complete and uploaded to Firebase',
-      );
-    } catch (e) {
-      debugPrint('❌ Error setting up initial data: $e');
-      rethrow;
-    }
-  }
-
   /// Method to clear all data and start fresh (for testing) - temporarily disabled
   Future<void> clearAllDataAndStartFresh() async {
     // Firebase temporarily disabled - only clear local data
@@ -343,57 +327,6 @@ class ResortDataProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Error clearing data: $e');
       rethrow;
-    }
-    */
-  }
-
-  Future<void> _uploadSampleDataToFirebase() async {
-    // Firebase temporarily disabled
-    debugPrint('🔄 Firebase disabled, skipping upload');
-    return;
-
-    /*
-    // Import Firebase packages
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-    // Upload guests
-    for (final guest in _guests) {
-      await firestore.collection('guests').doc(guest.id).set({
-        'name': guest.name,
-        'email': guest.email,
-        'phone': guest.phone,
-      });
-    }
-
-    // Upload rooms
-    for (final room in _rooms) {
-      await firestore.collection('rooms').doc(room.id).set({
-        'number': room.number,
-        'type': room.type,
-        'status': room.status,
-      });
-    }
-
-    // Upload bookings
-    for (final booking in _bookings) {
-      await firestore.collection('bookings').doc(booking.id).set({
-        'guestId': booking.guest.id,
-        'roomId': booking.room.id,
-        'checkIn': booking.checkIn.toIso8601String(),
-        'checkOut': booking.checkOut.toIso8601String(),
-        'notes': booking.notes,
-        'paymentStatus': booking.paymentStatus,
-      });
-    }
-
-    // Upload payments
-    for (final payment in _payments) {
-      await firestore.collection('payments').doc(payment.id).set({
-        'guestId': payment.guest.id,
-        'amount': payment.amount,
-        'status': payment.status,
-        'date': payment.date.toIso8601String(),
-      });
     }
     */
   }
@@ -516,6 +449,114 @@ class ResortDataProvider with ChangeNotifier {
     }
   }
 
+  // Persistence methods for SharedPreferences
+  Future<void> _saveBookingsToPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bookingsJson = _bookings
+          .map(
+            (booking) => {
+              'id': booking.id,
+              'guestId': booking.guest.id,
+              'guestName': booking.guest.name,
+              'guestEmail': booking.guest.email,
+              'guestPhone': booking.guest.phone,
+              'roomId': booking.room.id,
+              'roomNumber': booking.room.number,
+              'roomType': booking.room.type,
+              'roomStatus': booking.room.status,
+              'checkIn': booking.checkIn.toIso8601String(),
+              'checkOut': booking.checkOut.toIso8601String(),
+              'notes': booking.notes,
+              'depositPaid': booking.depositPaid,
+              'paymentStatus': booking.paymentStatus,
+            },
+          )
+          .toList();
+
+      await prefs.setString('bookings_data', jsonEncode(bookingsJson));
+      debugPrint('✅ Booking data saved to SharedPreferences');
+    } catch (e) {
+      debugPrint('❌ Error saving booking data: $e');
+    }
+  }
+
+  Future<void> _loadBookingsFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bookingsString = prefs.getString('bookings_data');
+
+      if (bookingsString != null) {
+        final bookingsJson = jsonDecode(bookingsString) as List;
+        _bookings = bookingsJson.map((json) {
+          final guest = Guest(
+            id: json['guestId'],
+            name: json['guestName'],
+            email: json['guestEmail'],
+            phone: json['guestPhone'],
+          );
+
+          final room = Room(
+            id: json['roomId'],
+            number: json['roomNumber'],
+            type: json['roomType'],
+            status: json['roomStatus'],
+          );
+
+          return Booking(
+            id: json['id'],
+            guest: guest,
+            room: room,
+            checkIn: DateTime.parse(json['checkIn']),
+            checkOut: DateTime.parse(json['checkOut']),
+            notes: json['notes'],
+            depositPaid: json['depositPaid'],
+            paymentStatus: json['paymentStatus'],
+          );
+        }).toList();
+
+        // Update guests and rooms lists with data from bookings
+        _updateGuestsAndRoomsFromBookings();
+
+        debugPrint(
+          '✅ Loaded ${_bookings.length} bookings from SharedPreferences',
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading booking data: $e');
+    }
+
+    // If no saved data or error loading, load sample data
+    await _loadSampleData();
+  }
+
+  void _updateGuestsAndRoomsFromBookings() {
+    // Update guests list
+    final guestMap = <String, Guest>{};
+    for (final booking in _bookings) {
+      guestMap[booking.guest.id!] = booking.guest;
+    }
+    _guests = guestMap.values.toList();
+
+    // Update rooms list with current status from bookings
+    final roomMap = <String, Room>{};
+    for (final booking in _bookings) {
+      roomMap[booking.room.id!] = booking.room;
+    }
+
+    // Add any additional rooms that might not be in bookings
+    if (_rooms.isNotEmpty) {
+      for (final room in _rooms) {
+        if (!roomMap.containsKey(room.id)) {
+          roomMap[room.id!] = room;
+        }
+      }
+    }
+
+    _rooms = roomMap.values.toList();
+  }
+
   Future<void> _loadSampleData() async {
     debugPrint('🔄 Loading sample data...');
 
@@ -523,14 +564,14 @@ class ResortDataProvider with ChangeNotifier {
     _guests = [
       Guest(
         id: 'guest-1',
-        name: 'John Doe',
-        email: 'john.doe@email.com',
+        name: 'Shajil Thaniyath',
+        email: 'shajil.thaniyath@email.com',
         phone: '+1-555-0123',
       ),
       Guest(
         id: 'guest-2',
-        name: 'Jane Smith',
-        email: 'jane.smith@email.com',
+        name: 'Ashok Thaniyath',
+        email: 'ashok.thaniyath@email.com',
         phone: '+1-555-0456',
       ),
     ];
@@ -603,6 +644,9 @@ class ResortDataProvider with ChangeNotifier {
     try {
       _bookings.add(booking);
 
+      // Save updated booking data to SharedPreferences
+      await _saveBookingsToPrefs();
+
       // Emit real-time event
       _realtimeService.emitBookingEvent(
         RealtimeEventType.bookingAdded,
@@ -628,6 +672,9 @@ class ResortDataProvider with ChangeNotifier {
       if (index != -1) {
         _bookings[index] = booking;
 
+        // Save updated booking data to SharedPreferences
+        await _saveBookingsToPrefs();
+
         // Emit real-time event
         _realtimeService
             .emitBookingEvent(RealtimeEventType.bookingUpdated, id, {
@@ -652,6 +699,9 @@ class ResortDataProvider with ChangeNotifier {
           : null;
 
       _bookings.removeWhere((b) => b.id == id);
+
+      // Save updated booking data to SharedPreferences
+      await _saveBookingsToPrefs();
 
       // Emit real-time event only if booking was found
       if (booking != null) {

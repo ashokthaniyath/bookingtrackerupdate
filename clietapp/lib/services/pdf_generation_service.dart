@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:universal_html/html.dart' as html;
 import '../models/booking.dart';
 import '../models/payment.dart';
 
@@ -24,7 +26,7 @@ class PDFGenerationService {
         {
           'name': 'Resort Paradise',
           'address': '123 Beach Road, Paradise Island',
-          'phone': '+1-555-RESORT',
+          'phone': '+91-555-RESORT',
           'email': 'info@resortparadise.com',
           'website': 'www.resortparadise.com',
         };
@@ -274,8 +276,8 @@ class PDFGenerationService {
           children: [
             _buildTableCell('${booking.room.type} Room ${booking.room.number}'),
             _buildTableCell(numberOfNights.toString()),
-            _buildTableCell('\$${roomRate.toStringAsFixed(2)}'),
-            _buildTableCell('\$${subtotal.toStringAsFixed(2)}'),
+            _buildTableCell('${roomRate.toStringAsFixed(2)}'),
+            _buildTableCell('${subtotal.toStringAsFixed(2)}'),
           ],
         ),
         // Subtotal row
@@ -284,7 +286,7 @@ class PDFGenerationService {
             _buildTableCell(''),
             _buildTableCell(''),
             _buildTableCell('Subtotal:', isHeader: true),
-            _buildTableCell('\$${subtotal.toStringAsFixed(2)}', isHeader: true),
+            _buildTableCell('${subtotal.toStringAsFixed(2)}', isHeader: true),
           ],
         ),
         // Tax row
@@ -293,7 +295,7 @@ class PDFGenerationService {
             _buildTableCell(''),
             _buildTableCell(''),
             _buildTableCell('Taxes (12%):', isHeader: true),
-            _buildTableCell('\$${taxes.toStringAsFixed(2)}', isHeader: true),
+            _buildTableCell('${taxes.toStringAsFixed(2)}', isHeader: true),
           ],
         ),
         // Total row
@@ -303,7 +305,7 @@ class PDFGenerationService {
             _buildTableCell(''),
             _buildTableCell(''),
             _buildTableCell('TOTAL:', isHeader: true),
-            _buildTableCell('\$${total.toStringAsFixed(2)}', isHeader: true),
+            _buildTableCell('${total.toStringAsFixed(2)}', isHeader: true),
           ],
         ),
       ],
@@ -380,7 +382,7 @@ class PDFGenerationService {
             children: [
               pw.Text('Amount:', style: const pw.TextStyle(fontSize: 12)),
               pw.Text(
-                '₹${payment.amount.toStringAsFixed(2)}',
+                '${payment.amount.toStringAsFixed(2)}',
                 style: const pw.TextStyle(fontSize: 12),
               ),
             ],
@@ -422,22 +424,37 @@ class PDFGenerationService {
     );
   }
 
-  /// Save PDF to device
+  /// Save PDF to device (with web support)
   static Future<String> savePDFToFile(
     Uint8List pdfBytes,
     String fileName,
   ) async {
     try {
       if (kIsWeb) {
-        // For web, trigger download
-        throw UnimplementedError(
-          'Web download not implemented in this example',
-        );
+        // For web platforms - trigger browser download
+        final blob = html.Blob([pdfBytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.document.createElement('a') as html.AnchorElement
+          ..href = url
+          ..style.display = 'none'
+          ..download = fileName;
+        html.document.body?.children.add(anchor);
+
+        // Trigger download
+        anchor.click();
+
+        // Clean up
+        html.document.body?.children.remove(anchor);
+        html.Url.revokeObjectUrl(url);
+
+        debugPrint('✅ PDF download triggered for web: $fileName');
+        return 'Downloads/$fileName'; // Return a user-friendly path
       } else {
-        // For mobile/desktop
+        // For mobile/desktop platforms
         final directory = await getApplicationDocumentsDirectory();
         final file = File('${directory.path}/$fileName');
         await file.writeAsBytes(pdfBytes);
+        debugPrint('✅ PDF saved to: ${file.path}');
         return file.path;
       }
     } catch (e) {
@@ -450,13 +467,13 @@ class PDFGenerationService {
   static double _getRoomRate(String roomType) {
     switch (roomType.toLowerCase()) {
       case 'suite':
-        return 300.0;
+        return 7000.0;
       case 'deluxe':
-        return 200.0;
+        return 6000.0;
       case 'standard':
-        return 100.0;
+        return 5000.0;
       default:
-        return 150.0;
+        return 6500.0;
     }
   }
 
