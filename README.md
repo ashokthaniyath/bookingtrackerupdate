@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🏨 Resort Booking Tracker
 
 A luxurious Flutter-based resort management application designed for modern hospitality businesses. This app provides comprehensive booking management, guest tracking, and analytics with a premium user interface.
@@ -235,3 +236,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Built with ❤️ using Flutter**
+=======
+# bookingtrackerupdate
+>>>>>>> dc5b4c2a28dc95028e493f6db7dd1f218da0b6f9
