@@ -1,7 +1,7 @@
-import 'package:googleapis/calendar/v3.dart' as calendar;
+// import 'package:googleapis/calendar/v3.dart' as calendar; // Temporarily disabled
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
-import 'package:url_launcher/url_launcher.dart';
+// import 'package:url_launcher/url_launcher.dart'; // Temporarily disabled
 import '../models/room_calendar_simple.dart';
 import '../models/booking.dart';
 

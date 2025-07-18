@@ -4,7 +4,7 @@ import '../models/booking.dart';
 import '../models/room.dart';
 import '../models/guest.dart';
 import '../models/payment.dart';
-import '../services/enhanced_firebase_service.dart';
+import '../services/enhanced_firebase_service_stub.dart';
 import 'resort_data_provider.dart';
 
 /// Enhanced Real-time Data Provider

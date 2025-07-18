@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-import '../services/voice_ai_service.dart';
+import '../services/voice_ai_service_stub.dart';
 import '../services/vertex_ai_service.dart';
 
 import '../models/guest.dart';
 import '../models/room.dart';
 
 /// Voice-enabled booking widget with speech recognition and audio feedback
+/// Responsive design for high-resolution mobile devices like Samsung S25 Ultra
 class VoiceBookingWidget extends StatefulWidget {
   final List<Room> availableRooms;
   final List<Guest> existingGuests;
@@ -15,12 +16,12 @@ class VoiceBookingWidget extends StatefulWidget {
   final VoidCallback? onClose;
 
   const VoiceBookingWidget({
-    Key? key,
+    super.key,
     required this.availableRooms,
     required this.existingGuests,
     required this.onBookingSuggestion,
     this.onClose,
-  }) : super(key: key);
+  });
 
   @override
   State<VoiceBookingWidget> createState() => _VoiceBookingWidgetState();
@@ -33,6 +34,7 @@ class _VoiceBookingWidgetState extends State<VoiceBookingWidget>
   bool _isProcessing = false;
   String _speechText = '';
   String _statusMessage = 'Tap the microphone to start voice booking';
+  BookingSuggestion? _lastSuggestion;
 
   late AnimationController _pulseController;
   late AnimationController _waveController;
@@ -119,690 +121,780 @@ class _VoiceBookingWidgetState extends State<VoiceBookingWidget>
     _listeningSubscription?.cancel();
     _speakingSubscription?.cancel();
     _speechSubscription?.cancel();
-    VoiceAIService.stop();
     super.dispose();
   }
 
   Future<void> _startVoiceBooking() async {
-    if (_isListening || _isSpeaking || _isProcessing) return;
-
     try {
-      setState(() {
-        _isProcessing = true;
-        _statusMessage = 'Initializing voice assistant...';
-        _speechText = '';
-      });
-
-      // Initialize voice service if needed
-      final initialized = await VoiceAIService.initialize();
-      if (!initialized) {
-        _showError(
-          'Voice assistant not available. Please check microphone permissions.',
-        );
-        return;
-      }
-
-      // Start listening
+      HapticFeedback.lightImpact();
       await VoiceAIService.startListening();
-
-      // Vibrate for feedback
-      HapticFeedback.mediumImpact();
-    } catch (e) {
-      _showError('Error starting voice booking: $e');
-    } finally {
       setState(() {
-        _isProcessing = false;
+        _speechText = '';
+        _lastSuggestion = null;
+        _statusMessage = 'Listening... Speak your booking request';
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'Error starting voice recognition: $e';
       });
     }
   }
 
   Future<void> _stopVoiceBooking() async {
-    await VoiceAIService.stop();
-    setState(() {
-      _statusMessage = 'Voice booking stopped';
-    });
+    try {
+      await VoiceAIService.stopListening();
+      setState(() {
+        _statusMessage = 'Processing your request...';
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'Error stopping voice recognition: $e';
+      });
+    }
   }
 
   Future<void> _processVoiceInput() async {
-    if (_speechText.trim().isEmpty) return;
+    if (_speechText.isEmpty) return;
+
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = 'Processing your booking request...';
+    });
 
     try {
-      setState(() {
-        _isProcessing = true;
-        _statusMessage = 'Processing with enhanced date recognition...';
-      });
-
-      // Use the enhanced Calendar AI processing
-      final suggestion = await VoiceAIService.processVoiceBookingWithCalendarAI(
+      final suggestion = await VertexAIService.processNaturalLanguageBooking(
         _speechText,
         widget.availableRooms,
         widget.existingGuests,
       );
 
-      if (suggestion != null && !suggestion.isError) {
+      if (mounted && !suggestion.isError) {
         setState(() {
-          _statusMessage = 'Smart booking suggestion ready!';
+          _lastSuggestion = suggestion;
+          _statusMessage = 'Booking suggestion ready!';
+          _isProcessing = false;
         });
 
-        // Show enhanced confirmation dialog with Calendar AI details
-        final confirmed = await _showEnhancedBookingConfirmation(suggestion);
-        if (confirmed) {
-          widget.onBookingSuggestion(suggestion);
-        }
+        await VoiceAIService.speak(
+          'I found a suitable booking for ${suggestion.guestName}. '
+          'Check-in on ${_formatDate(suggestion.checkInDate.toString())} and check-out on ${_formatDate(suggestion.checkOutDate.toString())}. '
+          'Would you like to confirm this booking?',
+        );
       } else {
-        _showError(
-          'Could not process your booking request. Please try again with different wording.',
+        setState(() {
+          _statusMessage = 'Could not process your request. Please try again.';
+          _isProcessing = false;
+        });
+
+        await VoiceAIService.speak(
+          'I could not understand your booking request. Please try again with details like guest name, room preference, and dates.',
         );
       }
     } catch (e) {
-      _showError('Error processing voice input: $e');
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _statusMessage = 'Error processing request: ${e.toString()}';
+          _isProcessing = false;
+        });
+      }
     }
-  }
-
-  /// Enhanced booking confirmation dialog with Calendar AI insights
-  Future<bool> _showEnhancedBookingConfirmation(
-    BookingSuggestion suggestion,
-  ) async {
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade400, Colors.blue.shade400],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.smart_toy,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Smart Booking Suggestion',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildConfirmationDetail(
-                    'Guest',
-                    suggestion.guestName,
-                    Icons.person,
-                  ),
-                  _buildConfirmationDetail(
-                    'Room Type',
-                    suggestion.roomType ?? 'Any Available',
-                    Icons.hotel,
-                  ),
-                  _buildConfirmationDetail(
-                    'Check-in',
-                    _formatDate(suggestion.checkInDate),
-                    Icons.login,
-                  ),
-                  _buildConfirmationDetail(
-                    'Check-out',
-                    _formatDate(suggestion.checkOutDate),
-                    Icons.logout,
-                  ),
-                  _buildConfirmationDetail(
-                    'Duration',
-                    '${suggestion.checkOutDate.difference(suggestion.checkInDate).inDays} nights',
-                    Icons.schedule,
-                  ),
-                  if (suggestion.confidence > 0.7)
-                    Container(
-                      margin: const EdgeInsets.only(top: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.green.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.verified,
-                            color: Colors.green.shade600,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'High confidence booking with enhanced date recognition',
-                              style: TextStyle(
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (suggestion.notes.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 12),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        suggestion.notes,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.blue.shade700,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(true),
-                icon: const Icon(Icons.check_circle, size: 18),
-                label: const Text('Confirm Booking'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
-  Future<bool> _showBookingConfirmation(BookingSuggestion suggestion) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.record_voice_over, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('Voice Booking Confirmation'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'I understood:',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            _buildConfirmationItem('Guest', suggestion.guestName),
-            _buildConfirmationItem(
-              'Room Type',
-              suggestion.roomType ?? 'Standard',
-            ),
-            _buildConfirmationItem(
-              'Check-in',
-              _formatDate(suggestion.checkInDate),
-            ),
-            _buildConfirmationItem(
-              'Check-out',
-              _formatDate(suggestion.checkOutDate),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.mic, color: Colors.blue, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'You can also use voice commands: Say "yes" to confirm or "no" to cancel.',
-                      style: TextStyle(fontSize: 12, color: Colors.blue),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  final voiceConfirmed =
-                      await VoiceAIService.confirmBookingByVoice();
-                  Navigator.of(context).pop(voiceConfirmed);
-                },
-                icon: const Icon(Icons.mic),
-                tooltip: 'Use Voice',
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Confirm'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    return confirmed ?? false;
-  }
-
-  Widget _buildConfirmationItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(
-            child: Text(value, style: TextStyle(color: Colors.grey[700])),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Helper method to build confirmation detail rows
-  Widget _buildConfirmationDetail(String label, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(icon, size: 16, color: Colors.blue.shade600),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showError(String message) {
-    setState(() {
-      _statusMessage = message;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'Retry',
-          textColor: Colors.white,
-          onPressed: _startVoiceBooking,
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+
+    // Responsive calculations for different device sizes
+    final isLargeScreen = screenWidth > 400;
+    final isVeryLargeScreen = screenWidth > 600;
+    final padding = isVeryLargeScreen
+        ? 32.0
+        : isLargeScreen
+        ? 24.0
+        : 16.0;
+    final titleFontSize = isVeryLargeScreen
+        ? 22.0
+        : isLargeScreen
+        ? 20.0
+        : 18.0;
+    final micSize = isVeryLargeScreen
+        ? 140.0
+        : isLargeScreen
+        ? 120.0
+        : 100.0;
+    final waveSize = isVeryLargeScreen
+        ? 160.0
+        : isLargeScreen
+        ? 140.0
+        : 120.0;
+
+    // Dialog constraints for responsive design on high-res devices
+    final maxDialogWidth = screenWidth * 0.92;
+    final maxDialogHeight = screenHeight * 0.88;
+    final dialogWidth = maxDialogWidth > 550 ? 550 : maxDialogWidth;
+    final dialogHeight = maxDialogHeight > 700 ? 700 : maxDialogHeight;
+
+    return Dialog(
+      insetPadding: EdgeInsets.all(padding),
+      child: Container(
+        width: dialogWidth.toDouble(),
+        height: dialogHeight.toDouble(),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.blue.shade50, Colors.indigo.shade50],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(padding * 0.33),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.record_voice_over,
+                      color: Colors.white,
+                      size: isVeryLargeScreen
+                          ? 28
+                          : isLargeScreen
+                          ? 24
+                          : 20,
+                    ),
+                  ),
+                  SizedBox(width: padding * 0.5),
+                  Expanded(
+                    child: Text(
+                      'Voice Booking Assistant',
+                      style: TextStyle(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo,
+                      ),
+                    ),
+                  ),
+                  if (widget.onClose != null)
+                    IconButton(
+                      onPressed: widget.onClose,
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Close Voice Assistant',
+                      iconSize: isLargeScreen ? 28 : 24,
+                    ),
+                ],
+              ),
+
+              // Scrollable content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(vertical: padding),
+                  child: Column(
+                    children: [
+                      // Voice Input Visualization
+                      Center(
+                        child: GestureDetector(
+                          onTap: _isListening
+                              ? _stopVoiceBooking
+                              : _startVoiceBooking,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Wave animation background
+                              if (_isListening)
+                                AnimatedBuilder(
+                                  animation: _waveAnimation,
+                                  builder: (context, child) {
+                                    return Container(
+                                      width:
+                                          waveSize +
+                                          (_waveAnimation.value *
+                                              (isVeryLargeScreen
+                                                  ? 50
+                                                  : isLargeScreen
+                                                  ? 40
+                                                  : 30)),
+                                      height:
+                                          waveSize +
+                                          (_waveAnimation.value *
+                                              (isVeryLargeScreen
+                                                  ? 50
+                                                  : isLargeScreen
+                                                  ? 40
+                                                  : 30)),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(
+                                          0.15 - (_waveAnimation.value * 0.1),
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    );
+                                  },
+                                ),
+
+                              // Pulse animation
+                              AnimatedBuilder(
+                                animation: _pulseAnimation,
+                                builder: (context, child) {
+                                  return Transform.scale(
+                                    scale: _isListening
+                                        ? _pulseAnimation.value
+                                        : 1.0,
+                                    child: Container(
+                                      width: micSize,
+                                      height: micSize,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: _isListening
+                                              ? [
+                                                  Colors.red.shade400,
+                                                  Colors.red.shade600,
+                                                ]
+                                              : _isSpeaking
+                                              ? [
+                                                  Colors.green.shade400,
+                                                  Colors.green.shade600,
+                                                ]
+                                              : [
+                                                  Colors.blue.shade400,
+                                                  Colors.blue.shade600,
+                                                ],
+                                        ),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                (_isListening
+                                                        ? Colors.red
+                                                        : Colors.blue)
+                                                    .withOpacity(0.4),
+                                            blurRadius: 25,
+                                            offset: const Offset(0, 8),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        _isListening
+                                            ? Icons.mic
+                                            : _isSpeaking
+                                            ? Icons.volume_up
+                                            : _isProcessing
+                                            ? Icons.hourglass_empty
+                                            : Icons.mic_none,
+                                        size: isVeryLargeScreen
+                                            ? 60
+                                            : isLargeScreen
+                                            ? 50
+                                            : 40,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(height: padding * 1.5),
+
+                      // Status and Instructions
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(padding),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.blue.withOpacity(0.2),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Status Message
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.all(padding * 0.75),
+                              decoration: BoxDecoration(
+                                color: _isListening
+                                    ? Colors.red.withOpacity(0.1)
+                                    : _isSpeaking
+                                    ? Colors.green.withOpacity(0.1)
+                                    : _isProcessing
+                                    ? Colors.orange.withOpacity(0.1)
+                                    : Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _statusMessage,
+                                style: TextStyle(
+                                  fontSize: isVeryLargeScreen
+                                      ? 18
+                                      : isLargeScreen
+                                      ? 16
+                                      : 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: _isListening
+                                      ? Colors.red.shade700
+                                      : _isSpeaking
+                                      ? Colors.green.shade700
+                                      : _isProcessing
+                                      ? Colors.orange.shade700
+                                      : Colors.blue.shade700,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+
+                            // Speech text display
+                            if (_speechText.isNotEmpty) ...[
+                              SizedBox(height: padding),
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(padding * 0.75),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.format_quote,
+                                          color: Colors.grey.shade600,
+                                          size: isLargeScreen ? 18 : 16,
+                                        ),
+                                        SizedBox(width: padding * 0.25),
+                                        Text(
+                                          'Your request:',
+                                          style: TextStyle(
+                                            fontSize: isVeryLargeScreen
+                                                ? 14
+                                                : isLargeScreen
+                                                ? 13
+                                                : 12,
+                                            color: Colors.grey.shade600,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: padding * 0.5),
+                                    Text(
+                                      _speechText,
+                                      style: TextStyle(
+                                        fontSize: isVeryLargeScreen
+                                            ? 16
+                                            : isLargeScreen
+                                            ? 15
+                                            : 14,
+                                        color: Colors.grey.shade800,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            SizedBox(height: padding),
+
+                            // Instructions
+                            Text(
+                              _isListening
+                                  ? 'Speak clearly and mention guest name, room preference, and dates'
+                                  : _isSpeaking
+                                  ? 'Please wait while I respond...'
+                                  : _isProcessing
+                                  ? 'Analyzing your request...'
+                                  : 'Tap the microphone to start voice booking',
+                              style: TextStyle(
+                                fontSize: isVeryLargeScreen
+                                    ? 14
+                                    : isLargeScreen
+                                    ? 13
+                                    : 12,
+                                color: Colors.grey.shade600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: padding * 1.5),
+
+                      // Control Buttons
+                      Wrap(
+                        spacing: padding,
+                        runSpacing: padding * 0.75,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _isProcessing
+                                ? null
+                                : (_isListening
+                                      ? _stopVoiceBooking
+                                      : _startVoiceBooking),
+                            icon: Icon(
+                              _isListening ? Icons.stop : Icons.mic,
+                              size: isVeryLargeScreen
+                                  ? 24
+                                  : isLargeScreen
+                                  ? 22
+                                  : 20,
+                            ),
+                            label: Text(
+                              _isListening
+                                  ? 'Stop Listening'
+                                  : 'Start Voice Booking',
+                              style: TextStyle(
+                                fontSize: isVeryLargeScreen
+                                    ? 16
+                                    : isLargeScreen
+                                    ? 14
+                                    : 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _isListening
+                                  ? Colors.red
+                                  : Colors.blue,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: padding * 1.25,
+                                vertical: padding * 0.75,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 8,
+                            ),
+                          ),
+
+                          if (_speechText.isNotEmpty && !_isProcessing)
+                            ElevatedButton.icon(
+                              onPressed: _processVoiceInput,
+                              icon: Icon(
+                                Icons.send,
+                                size: isVeryLargeScreen
+                                    ? 24
+                                    : isLargeScreen
+                                    ? 22
+                                    : 20,
+                              ),
+                              label: Text(
+                                'Process Request',
+                                style: TextStyle(
+                                  fontSize: isVeryLargeScreen
+                                      ? 16
+                                      : isLargeScreen
+                                      ? 14
+                                      : 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: padding * 1.25,
+                                  vertical: padding * 0.75,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                elevation: 8,
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      // Suggestion Card
+                      if (_lastSuggestion != null) ...[
+                        SizedBox(height: padding * 1.5),
+                        _buildSuggestionCard(
+                          _lastSuggestion!,
+                          isLargeScreen,
+                          isVeryLargeScreen,
+                          padding,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build suggestion card with responsive design
+  Widget _buildSuggestionCard(
+    BookingSuggestion suggestion,
+    bool isLargeScreen,
+    bool isVeryLargeScreen,
+    double padding,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      width: double.infinity,
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.blue.shade50, Colors.indigo.shade50],
+          colors: [Colors.green.shade50, Colors.blue.shade50],
         ),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.withOpacity(0.3), width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.green.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.record_voice_over,
-                  color: Colors.white,
-                  size: 24,
-                ),
+              Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: isVeryLargeScreen
+                    ? 28
+                    : isLargeScreen
+                    ? 24
+                    : 20,
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: padding * 0.5),
+              Expanded(
                 child: Text(
-                  'Voice Booking Assistant',
+                  'Booking Suggestion',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: isVeryLargeScreen
+                        ? 20
+                        : isLargeScreen
+                        ? 18
+                        : 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.indigo,
+                    color: Colors.green.shade700,
                   ),
                 ),
               ),
-              if (widget.onClose != null)
-                IconButton(
-                  onPressed: widget.onClose,
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Close Voice Assistant',
-                ),
             ],
           ),
+          SizedBox(height: padding),
 
-          const SizedBox(height: 24),
-
-          // Voice Input Visualization
-          Center(
-            child: GestureDetector(
-              onTap: _isListening ? _stopVoiceBooking : _startVoiceBooking,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Wave animation background
-                  if (_isListening)
-                    AnimatedBuilder(
-                      animation: _waveAnimation,
-                      builder: (context, child) {
-                        return Container(
-                          width: 140 + (_waveAnimation.value * 40),
-                          height: 140 + (_waveAnimation.value * 40),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(
-                              0.1 - (_waveAnimation.value * 0.05),
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                        );
-                      },
-                    ),
-
-                  // Pulse animation
-                  AnimatedBuilder(
-                    animation: _pulseAnimation,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _isListening ? _pulseAnimation.value : 1.0,
-                        child: Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: _isListening
-                                  ? [Colors.red.shade400, Colors.red.shade600]
-                                  : _isSpeaking
-                                  ? [
-                                      Colors.green.shade400,
-                                      Colors.green.shade600,
-                                    ]
-                                  : [
-                                      Colors.blue.shade400,
-                                      Colors.blue.shade600,
-                                    ],
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: (_isListening ? Colors.red : Colors.blue)
-                                    .withOpacity(0.3),
-                                blurRadius: 20,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            _isListening
-                                ? Icons.mic
-                                : _isSpeaking
-                                ? Icons.volume_up
-                                : _isProcessing
-                                ? Icons.hourglass_empty
-                                : Icons.mic_none,
-                            size: 50,
-                            color: Colors.white,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
+          _buildSuggestionRow(
+            'Guest:',
+            suggestion.guestName,
+            isLargeScreen,
+            isVeryLargeScreen,
+          ),
+          _buildSuggestionRow(
+            'Room Type:',
+            suggestion.roomType ?? 'Standard',
+            isLargeScreen,
+            isVeryLargeScreen,
+          ),
+          _buildSuggestionRow(
+            'Check-in:',
+            _formatDate(suggestion.checkInDate.toString()),
+            isLargeScreen,
+            isVeryLargeScreen,
+          ),
+          _buildSuggestionRow(
+            'Check-out:',
+            _formatDate(suggestion.checkOutDate.toString()),
+            isLargeScreen,
+            isVeryLargeScreen,
           ),
 
-          const SizedBox(height: 20),
-
-          // Status Message
-          Text(
-            _statusMessage,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Speech Text Display
-          if (_speechText.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.format_quote,
-                        color: Colors.grey.shade600,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Your request:',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _speechText,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (!_isProcessing)
-                    ElevatedButton.icon(
-                      onPressed: _processVoiceInput,
-                      icon: const Icon(Icons.send, size: 16),
-                      label: const Text('Process Request'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                ],
-              ),
+          if (suggestion.notes.isNotEmpty)
+            _buildSuggestionRow(
+              'Notes:',
+              suggestion.notes,
+              isLargeScreen,
+              isVeryLargeScreen,
             ),
 
-          const SizedBox(height: 20),
+          SizedBox(height: padding * 1.25),
 
-          // Action Buttons
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    await VoiceAIService.speakHelp();
-                  },
-                  icon: const Icon(Icons.help_outline),
-                  label: const Text('Help'),
+                child: ElevatedButton.icon(
+                  onPressed: () => widget.onBookingSuggestion(suggestion),
+                  icon: Icon(
+                    Icons.check,
+                    size: isVeryLargeScreen
+                        ? 22
+                        : isLargeScreen
+                        ? 20
+                        : 18,
+                  ),
+                  label: Text(
+                    'Accept Booking',
+                    style: TextStyle(
+                      fontSize: isVeryLargeScreen
+                          ? 16
+                          : isLargeScreen
+                          ? 14
+                          : 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: padding * 0.8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 6,
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: padding),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () async {
-                    await VoiceAIService.testVoice();
+                  onPressed: () {
+                    setState(() {
+                      _lastSuggestion = null;
+                      _speechText = '';
+                      _statusMessage =
+                          'Tap the microphone to start voice booking';
+                    });
                   },
-                  icon: const Icon(Icons.mic_external_on),
-                  label: const Text('Test Voice'),
+                  icon: Icon(
+                    Icons.edit,
+                    size: isVeryLargeScreen
+                        ? 22
+                        : isLargeScreen
+                        ? 20
+                        : 18,
+                  ),
+                  label: Text(
+                    'Modify',
+                    style: TextStyle(
+                      fontSize: isVeryLargeScreen
+                          ? 16
+                          : isLargeScreen
+                          ? 14
+                          : 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                    side: BorderSide(color: Colors.blue, width: 2),
+                    padding: EdgeInsets.symmetric(vertical: padding * 0.8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(height: 16),
-
-          // Voice Commands Help
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.amber.shade200),
+  Widget _buildSuggestionRow(
+    String label,
+    String value,
+    bool isLargeScreen,
+    bool isVeryLargeScreen,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: isVeryLargeScreen
+                ? 120
+                : isLargeScreen
+                ? 110
+                : 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: isVeryLargeScreen
+                    ? 15
+                    : isLargeScreen
+                    ? 14
+                    : 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.lightbulb_outline,
-                      color: Colors.amber.shade700,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Voice Commands:',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.amber.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '• "Book a room for John from tomorrow to Friday"\n'
-                  '• "I need a deluxe room for 3 nights starting Monday"\n'
-                  '• "Reserve a suite for Sarah checking in today"',
-                  style: TextStyle(fontSize: 11, color: Colors.amber.shade700),
-                ),
-              ],
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: isVeryLargeScreen
+                    ? 15
+                    : isLargeScreen
+                    ? 14
+                    : 12,
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return dateStr;
+    }
   }
 }

@@ -9,7 +9,7 @@ void main() async {
 
   // Initialize sample data directly without Firebase
   final resortProvider = ResortDataProvider();
-  await resortProvider.initializeWithSampleData();
+  await resortProvider.forceSampleData();
 
   runApp(BookingTrackerApp(resortProvider: resortProvider));
 }

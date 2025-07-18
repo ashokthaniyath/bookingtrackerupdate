@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+// import 'package:flutter_tts/flutter_tts.dart'; // Temporarily disabled
 import '../models/guest.dart';
 import '../models/room.dart';
 import 'vertex_ai_service.dart';

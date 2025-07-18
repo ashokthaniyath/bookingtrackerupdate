@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'services/enhanced_firebase_service.dart';
-// import 'services/vertex_ai_service.dart';
-// import 'services/google_auth_service.dart';
-
-import 'utils/google_calendar_service.dart';
+import 'config/app_config.dart';
+// import 'services/production_deployment_manager.dart'; // Temporarily disabled
+import 'services/production_ai_service.dart';
+import 'services/production_voice_service.dart';
+import 'services/production_calendar_service.dart';
+import 'utils/google_calendar_service_stub.dart';
 import 'screens/main_scaffold.dart';
 import 'screens/auth_gate.dart';
 import 'screens/sign_in_screen.dart';
@@ -23,45 +24,47 @@ import 'providers/resort_data_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase and Firestore (temporarily disabled for debugging)
-  /*
-  try {
-    await EnhancedFirebaseService.initialize();
-    print('Enhanced Firebase Service initialized successfully');
+  print('🚀 Starting ${AppConfig.appName} v${AppConfig.version}...');
+  print(
+    '📱 Running in ${AppConfig.isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode',
+  );
 
-    // Initialize sample data if needed
-    await EnhancedFirebaseService.initializeSampleData();
-  } catch (e) {
-    print('Failed to initialize Enhanced Firebase Service: $e');
-  }
+  // Initialize Production Services using Deployment Manager
+  // Temporarily disabled to prevent startup issues
+  // if (AppConfig.isProduction) {
+  //   final deploymentResult =
+  //       await ProductionDeploymentManager.initializeProduction();
+  //   if (deploymentResult.isSuccess) {
+  //     print('✅ Production deployment completed successfully!');
+  //   } else {
+  //     print('❌ Production deployment failed: ${deploymentResult.message}');
+  //   }
+  // } else {
+  //   await _initializeTestServices();
+  // }
 
-  // Initialize Vertex AI Service
-  try {
-    await VertexAIService.initialize();
-    print('Vertex AI Service initialized successfully');
+  // Use basic initialization for now
+  await _initializeTestServices();
 
-    // Test the AI assistant to ensure it's working correctly
-    await VertexAIService.testBookingAI();
-  } catch (e) {
-    print('Failed to initialize Vertex AI Service: $e');
-  }
-  */
-
-  // Initialize Google Authentication Service
-  /*
-  try {
-    await GoogleAuthService.initialize();
-    print('Google Authentication initialized successfully');
-  } catch (e) {
-    print('Failed to initialize Google Authentication: $e');
-  }
-  */
-
-  // New Feature: Initialize Enhanced Google Calendar Service
-  final calendarService = EnhancedGoogleCalendarService();
-  calendarService.initializeRoomCalendars();
+  // Initialize Google Calendar Service (existing)
+  EnhancedGoogleCalendarService.initializeRoomCalendars();
 
   runApp(const ThemeModeProvider(child: NotionBookApp()));
+}
+
+Future<void> _initializeTestServices() async {
+  print('🧪 Initializing Test Services...');
+
+  try {
+    // Initialize services in test mode
+    await ProductionAIService.initialize();
+    await ProductionVoiceService.initialize();
+    await ProductionCalendarService.initialize();
+
+    print('✅ Test services initialized successfully');
+  } catch (e) {
+    print('❌ Failed to initialize test services: $e');
+  }
 }
 
 class NotionBookApp extends StatelessWidget {
@@ -74,14 +77,20 @@ class NotionBookApp extends StatelessWidget {
         return ChangeNotifierProvider<ResortDataProvider>(
           create: (context) {
             final provider = ResortDataProvider();
-            // Use sample data for development to avoid Firebase build issues
-            provider.forceSampleData();
+            // Use production or sample data based on configuration
+            if (AppConfig.isProduction && AppConfig.isConfigured) {
+              print('🔄 Using production data source');
+              // Production data will be loaded from Firebase
+            } else {
+              print('🧪 Using sample data for testing');
+              provider.forceSampleData();
+            }
             return provider;
           },
           child: MaterialApp(
-            title: 'NotionBook – Guest Booking Manager',
+            title: AppConfig.appName,
             theme: notionTheme,
-            debugShowCheckedModeBanner: false,
+            debugShowCheckedModeBanner: !AppConfig.isProduction,
             home: const AuthGate(child: MainScaffold()),
             routes: {
               // Authentication routes
@@ -113,5 +122,3 @@ class NotionBookApp extends StatelessWidget {
     );
   }
 }
-
-// Removed the signOut function as FirebaseAuth is no longer used

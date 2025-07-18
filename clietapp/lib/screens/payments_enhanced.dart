@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../models/booking.dart';
 import '../models/guest.dart';
 import '../models/room.dart';
 import '../models/payment.dart';
 import '../providers/resort_data_provider.dart';
-import '../services/pdf_generation_service.dart';
+import '../services/pdf_generation_service_stub.dart' as PDFGenerationService;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
@@ -834,10 +833,10 @@ class _PaymentsPageState extends State<PaymentsPage>
         );
       }
 
-      // Generate PDF bytes
-      final pdfBytes = await PDFGenerationService.generateInvoicePDF(
-        booking: booking,
-        payment: Payment(
+      // Generate and save PDF with enhanced Android support
+      await PDFGenerationService.PDFGenerationService.generateInvoicePDF(
+        booking,
+        Payment(
           guest: booking.guest,
           amount: 5000.0,
           status: booking.paymentStatus,
@@ -845,59 +844,15 @@ class _PaymentsPageState extends State<PaymentsPage>
         ),
       );
 
-      // Save PDF to device
-      final fileName =
-          'Invoice_${booking.guest.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final savedPath = await PDFGenerationService.savePDFToFile(
-        pdfBytes,
-        fileName,
-      );
-
       if (mounted) {
-        // Different messages for web vs desktop/mobile
-        final isWebPlatform = kIsWeb;
-        final primaryMessage = isWebPlatform
-            ? 'PDF Invoice downloaded successfully! ✓'
-            : 'PDF Invoice generated successfully! ✓';
-        final secondaryMessage = isWebPlatform
-            ? 'Check your Downloads folder'
-            : 'Saved to: ${savedPath.split('/').last}';
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  primaryMessage,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  secondaryMessage,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+            content: Text(
+              'PDF processed',
+              style: GoogleFonts.poppins(color: Colors.white),
             ),
             backgroundColor: const Color(0xFF14B8A6),
             duration: const Duration(seconds: 4),
-            action: isWebPlatform
-                ? null
-                : SnackBarAction(
-                    label: 'VIEW PATH',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      // Show full path in a dialog
-                      _showPDFLocationDialog(savedPath);
-                    },
-                  ),
           ),
         );
       }
@@ -1074,84 +1029,6 @@ class _PaymentsPageState extends State<PaymentsPage>
         );
       }
     }
-  }
-
-  // Show PDF Location Dialog
-  void _showPDFLocationDialog(String filePath) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.picture_as_pdf, color: Color(0xFF1E3A8A)),
-            const SizedBox(width: 8),
-            Text(
-              'PDF Saved',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF1E3A8A),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'The PDF invoice has been saved to:',
-              style: GoogleFonts.poppins(
-                color: const Color(0xFF64748B),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: SelectableText(
-                filePath,
-                style: GoogleFonts.robotoMono(
-                  fontSize: 12,
-                  color: const Color(0xFF1E293B),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'You can find this file in your Documents folder.',
-              style: GoogleFonts.poppins(
-                color: const Color(0xFF64748B),
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E3A8A),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              'OK',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   // Voice Booking Floating Action Button

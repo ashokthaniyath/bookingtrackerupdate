@@ -135,156 +135,41 @@ class _BookingFormPageState extends State<BookingFormPage>
   }
 
   void _showAddGuestDialog(ResortDataProvider provider) async {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final phoneController = TextEditingController();
-
     try {
-      await showDialog(
+      // Android Fix: Use a different approach to prevent state conflicts
+      final result = await showDialog<Guest>(
         context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: Text(
-            'Add Guest',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: const Color(0xFF1E3A8A),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                style: GoogleFonts.poppins(),
-                decoration: InputDecoration(
-                  labelText: 'Name *',
-                  labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: const BorderSide(color: Color(0xFF14B8A6)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF14B8A6),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: emailController,
-                style: GoogleFonts.poppins(),
-                decoration: InputDecoration(
-                  labelText: 'Email (Optional)',
-                  labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: const BorderSide(color: Color(0xFF14B8A6)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF14B8A6),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: phoneController,
-                style: GoogleFonts.poppins(),
-                decoration: InputDecoration(
-                  labelText: 'Phone (Optional)',
-                  labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: const BorderSide(color: Color(0xFF14B8A6)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF14B8A6),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(color: Colors.grey[600]),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                // Bug Prevention: Validate input before creating guest
-                if (nameController.text.trim().isNotEmpty) {
-                  try {
-                    final newGuest = Guest(
-                      name: nameController.text.trim(),
-                      email: emailController.text.trim().isEmpty
-                          ? null
-                          : emailController.text.trim(),
-                      phone: phoneController.text.trim().isEmpty
-                          ? null
-                          : phoneController.text.trim(),
-                    );
-
-                    await provider.addGuest(newGuest);
-                    if (mounted) {
-                      setState(() {
-                        _guests = provider.guests;
-                        _selectedGuest = newGuest;
-                      });
-                      if (mounted) Navigator.pop(context);
-                    }
-                  } catch (e) {
-                    debugPrint('Error adding guest: $e');
-                    if (mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error adding guest: $e'),
-                          backgroundColor: const Color(0xFFF43F5E),
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF14B8A6),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                'Add',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
+        builder: (context) => _AddGuestDialog(),
       );
+
+      if (result != null && mounted) {
+        try {
+          // Add guest to provider
+          await provider.addGuest(result);
+
+          // Use post-frame callback to ensure state update after frame
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _guests = provider.guests;
+                _selectedGuest = result;
+              });
+            }
+          });
+        } catch (e) {
+          debugPrint('Error adding guest: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error adding guest: $e'),
+                backgroundColor: const Color(0xFFF43F5E),
+              ),
+            );
+          }
+        }
+      }
     } catch (e) {
       debugPrint('Dialog error: $e');
-    } finally {
-      nameController.dispose();
-      emailController.dispose();
-      phoneController.dispose();
     }
   }
 
@@ -408,92 +293,23 @@ class _BookingFormPageState extends State<BookingFormPage>
                 position: _slideAnimation,
                 child: SafeArea(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(
+                      MediaQuery.of(context).size.width > 600 ? 32 : 20,
+                    ),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         children: [
                           // AI Smart Booking Assistant
                           const SmartBookingAssistant(),
-                          const SizedBox(height: 24),
-
-                          // Voice Booking Quick Access Card
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.purple.shade50,
-                                  Colors.indigo.shade50,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.purple.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.mic,
-                                  color: Colors.purple.shade600,
-                                  size: 28,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Voice Booking Available',
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.purple.shade700,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Create bookings with speech recognition',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                ElevatedButton.icon(
-                                  onPressed: () =>
-                                      _showVoiceBookingDialog(provider),
-                                  icon: Icon(
-                                    Icons.mic_rounded,
-                                    size: 20,
-                                    color: Colors.white,
-                                  ),
-                                  label: Text(
-                                    'Start Voice',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.purple.shade600,
-                                    foregroundColor: Colors.white,
-                                    elevation: 2,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height > 800
+                                ? 32
+                                : 24,
                           ),
+
+                          // Voice Booking Quick Access Card - Responsive
+                          _buildVoiceBookingCard(provider),
                           const SizedBox(height: 24),
 
                           // UI Enhancement: Guest Selection Card
@@ -913,26 +729,8 @@ class _BookingFormPageState extends State<BookingFormPage>
             ),
             const SizedBox(height: 16),
 
-            // Date Selection Row
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDateSelector(
-                    'Check-in Date',
-                    _checkInDate,
-                    () => _pickDate(isCheckIn: true),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildDateSelector(
-                    'Check-out Date',
-                    _checkOutDate,
-                    () => _pickDate(isCheckIn: false),
-                  ),
-                ),
-              ],
-            ),
+            // Date Selection - Responsive
+            _buildDateSelectionSection(),
 
             const SizedBox(height: 16),
 
@@ -961,137 +759,238 @@ class _BookingFormPageState extends State<BookingFormPage>
 
             const SizedBox(height: 16),
 
-            // Payment Details
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Checkbox(
-                        value: _depositPaid,
-                        onChanged: (v) =>
-                            setState(() => _depositPaid = v ?? false),
-                        activeColor: const Color(0xFF14B8A6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      Flexible(
-                        child: Text(
-                          'Deposit Paid',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _paymentStatus,
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Pending',
-                        child: Text('Pending'),
-                      ),
-                      DropdownMenuItem(value: 'Paid', child: Text('Paid')),
-                      DropdownMenuItem(
-                        value: 'Cancelled',
-                        child: Text('Cancelled'),
-                      ),
-                    ],
-                    onChanged: (v) =>
-                        setState(() => _paymentStatus = v ?? 'Pending'),
-                    decoration: InputDecoration(
-                      labelText: 'Payment Status',
-                      labelStyle: GoogleFonts.poppins(),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: const BorderSide(color: Color(0xFF14B8A6)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF14B8A6),
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // Payment Details - Responsive Layout
+            _buildPaymentDetailsSection(),
           ],
         ),
       ),
     );
   }
 
-  // UI Enhancement: Date Selector Widget
-  Widget _buildDateSelector(String label, DateTime? date, VoidCallback onTap) {
+  // UI Enhancement: Responsive Date Selection Section
+  Widget _buildDateSelectionSection() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Get screen dimensions for responsive design
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isHighResolution = screenWidth > 400 && screenHeight > 800;
+        final isTablet = screenWidth > 600;
+        final isCompact = screenWidth < 350;
+
+        // Calculate responsive dimensions
+        final horizontalPadding = isTablet ? 24.0 : 16.0;
+        final spacingBetween = isCompact ? 12.0 : 16.0;
+        final iconSize = isHighResolution ? 20.0 : 16.0;
+        final labelFontSize = isHighResolution ? 13.0 : 12.0;
+        final dateFontSize = isHighResolution ? 16.0 : 14.0;
+
+        // For very wide screens or tablets, use horizontal layout
+        if (constraints.maxWidth > 600) {
+          return Row(
+            children: [
+              // Check-in Date
+              Expanded(
+                child: _buildResponsiveDateSelector(
+                  'Check-in Date',
+                  _checkInDate,
+                  () => _pickDate(isCheckIn: true),
+                  horizontalPadding: horizontalPadding,
+                  iconSize: iconSize,
+                  labelFontSize: labelFontSize,
+                  dateFontSize: dateFontSize,
+                ),
+              ),
+              SizedBox(width: spacingBetween),
+              // Check-out Date
+              Expanded(
+                child: _buildResponsiveDateSelector(
+                  'Check-out Date',
+                  _checkOutDate,
+                  () => _pickDate(isCheckIn: false),
+                  horizontalPadding: horizontalPadding,
+                  iconSize: iconSize,
+                  labelFontSize: labelFontSize,
+                  dateFontSize: dateFontSize,
+                ),
+              ),
+            ],
+          );
+        }
+
+        // For mobile devices, use vertical layout to prevent overflow
+        return Column(
+          children: [
+            // Check-in Date
+            _buildResponsiveDateSelector(
+              'Check-in Date',
+              _checkInDate,
+              () => _pickDate(isCheckIn: true),
+              horizontalPadding: horizontalPadding,
+              iconSize: iconSize,
+              labelFontSize: labelFontSize,
+              dateFontSize: dateFontSize,
+            ),
+            SizedBox(height: spacingBetween),
+            // Check-out Date
+            _buildResponsiveDateSelector(
+              'Check-out Date',
+              _checkOutDate,
+              () => _pickDate(isCheckIn: false),
+              horizontalPadding: horizontalPadding,
+              iconSize: iconSize,
+              labelFontSize: labelFontSize,
+              dateFontSize: dateFontSize,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // UI Enhancement: Responsive Date Selector Widget
+  Widget _buildResponsiveDateSelector(
+    String label,
+    DateTime? date,
+    VoidCallback onTap, {
+    required double horizontalPadding,
+    required double iconSize,
+    required double labelFontSize,
+    required double dateFontSize,
+  }) {
+    final isSelected = date != null;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 350;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(horizontalPadding),
         decoration: BoxDecoration(
           border: Border.all(
-            color: date != null
-                ? const Color(0xFF14B8A6)
-                : Colors.grey.shade300,
-            width: date != null ? 2 : 1,
+            color: isSelected ? const Color(0xFF14B8A6) : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(15),
-          color: date != null
-              ? const Color(0xFF14B8A6).withValues(alpha: 0.05)
+          color: isSelected
+              ? const Color(0xFF14B8A6).withOpacity(0.05)
               : Colors.grey.shade50,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF14B8A6).withOpacity(0.1),
+                    offset: const Offset(0, 2),
+                    blurRadius: 8,
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Label
             Text(
               label,
               style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: const Color(0xFF64748B),
+                fontSize: labelFontSize,
+                color: isSelected
+                    ? const Color(0xFF14B8A6)
+                    : const Color(0xFF64748B),
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: isCompact ? 6 : 8),
+            // Date Display
             Row(
               children: [
                 Icon(
                   Icons.calendar_today,
-                  size: 16,
-                  color: date != null
+                  size: iconSize,
+                  color: isSelected
                       ? const Color(0xFF14B8A6)
                       : Colors.grey.shade400,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: isCompact ? 6 : 8),
                 Expanded(
                   child: Text(
-                    date != null
-                        ? '${date.day}/${date.month}/${date.year}'
-                        : 'Select Date',
+                    date != null ? _formatDate(date) : 'Select Date',
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w500,
-                      color: date != null
+                      fontSize: dateFontSize,
+                      color: isSelected
                           ? const Color(0xFF1E293B)
                           : const Color(0xFF64748B),
                     ),
                   ),
                 ),
+                // Visual indicator for selected state
+                if (isSelected)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF14B8A6),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
               ],
             ),
+            // Additional info for selected dates
+            if (isSelected) ...[
+              SizedBox(height: isCompact ? 4 : 6),
+              Text(
+                _getDateInfo(date, label),
+                style: GoogleFonts.poppins(
+                  fontSize: labelFontSize - 1,
+                  color: const Color(0xFF64748B),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  // Helper method to format date display
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = date.difference(now).inDays;
+
+    if (difference == 0) {
+      return 'Today (${date.day}/${date.month}/${date.year})';
+    } else if (difference == 1) {
+      return 'Tomorrow (${date.day}/${date.month}/${date.year})';
+    } else if (difference == -1) {
+      return 'Yesterday (${date.day}/${date.month}/${date.year})';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  // Helper method to get additional date info
+  String _getDateInfo(DateTime date, String label) {
+    final now = DateTime.now();
+    final difference = date.difference(now).inDays;
+
+    if (label.contains('Check-in')) {
+      if (difference > 0) {
+        return 'In $difference days';
+      } else if (difference == 0) {
+        return 'Today';
+      } else {
+        return '${difference.abs()} days ago';
+      }
+    } else {
+      // Check-out date
+      if (_checkInDate != null) {
+        final stayDuration = date.difference(_checkInDate!).inDays;
+        return stayDuration == 1 ? '1 night stay' : '$stayDuration nights stay';
+      }
+      return '';
+    }
   }
 
   // UI Enhancement: Save Button
@@ -1526,5 +1425,505 @@ class _BookingFormPageState extends State<BookingFormPage>
         ),
       );
     }
+  }
+
+  // UI Enhancement: Responsive Payment Details Section
+  Widget _buildPaymentDetailsSection() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Get screen dimensions for responsive design
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isHighResolution = screenWidth > 400 && screenHeight > 800;
+        final isTablet = screenWidth > 600;
+
+        // Calculate responsive dimensions
+        final horizontalPadding = isTablet ? 24.0 : 16.0;
+        final verticalSpacing = isHighResolution ? 20.0 : 16.0;
+        final fontSize = isHighResolution ? 14.0 : 13.0;
+        final checkboxScale = isHighResolution ? 1.2 : 1.0;
+
+        // For very wide screens or tablets, use horizontal layout
+        if (constraints.maxWidth > 600) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Deposit Paid Section
+              Expanded(
+                flex: 1,
+                child: _buildDepositPaidWidget(
+                  fontSize: fontSize,
+                  checkboxScale: checkboxScale,
+                  horizontalPadding: horizontalPadding,
+                ),
+              ),
+              SizedBox(width: horizontalPadding),
+              // Payment Status Section
+              Expanded(
+                flex: 1,
+                child: _buildPaymentStatusWidget(
+                  fontSize: fontSize,
+                  horizontalPadding: horizontalPadding,
+                ),
+              ),
+            ],
+          );
+        }
+
+        // For mobile devices, use vertical layout to prevent overflow
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Deposit Paid Section
+            _buildDepositPaidWidget(
+              fontSize: fontSize,
+              checkboxScale: checkboxScale,
+              horizontalPadding: horizontalPadding,
+            ),
+            SizedBox(height: verticalSpacing),
+            // Payment Status Section
+            _buildPaymentStatusWidget(
+              fontSize: fontSize,
+              horizontalPadding: horizontalPadding,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // UI Enhancement: Deposit Paid Widget
+  Widget _buildDepositPaidWidget({
+    required double fontSize,
+    required double checkboxScale,
+    required double horizontalPadding,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(horizontalPadding),
+      decoration: BoxDecoration(
+        color: const Color(0xFF14B8A6).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: _depositPaid ? const Color(0xFF14B8A6) : Colors.grey.shade300,
+          width: _depositPaid ? 2 : 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Transform.scale(
+            scale: checkboxScale,
+            child: Checkbox(
+              value: _depositPaid,
+              onChanged: (v) => setState(() => _depositPaid = v ?? false),
+              activeColor: const Color(0xFF14B8A6),
+              checkColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              'Deposit Paid',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500,
+                fontSize: fontSize,
+                color: _depositPaid
+                    ? const Color(0xFF14B8A6)
+                    : const Color(0xFF1E293B),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // UI Enhancement: Payment Status Widget
+  Widget _buildPaymentStatusWidget({
+    required double fontSize,
+    required double horizontalPadding,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: _paymentStatus,
+      items: const [
+        DropdownMenuItem(value: 'Pending', child: Text('Pending')),
+        DropdownMenuItem(value: 'Paid', child: Text('Paid')),
+        DropdownMenuItem(value: 'Cancelled', child: Text('Cancelled')),
+      ],
+      onChanged: (v) => setState(() => _paymentStatus = v ?? 'Pending'),
+      decoration: InputDecoration(
+        labelText: 'Payment Status',
+        labelStyle: GoogleFonts.poppins(
+          fontSize: fontSize,
+          color: const Color(0xFF64748B),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFF14B8A6)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFF14B8A6), width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: 16,
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+      ),
+      style: GoogleFonts.poppins(
+        fontSize: fontSize,
+        color: const Color(0xFF1E293B),
+      ),
+      dropdownColor: Colors.white,
+      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF14B8A6)),
+    );
+  }
+
+  // UI Enhancement: Responsive Voice Booking Card
+  Widget _buildVoiceBookingCard(ResortDataProvider provider) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isHighResolution = screenWidth > 400 && screenHeight > 800;
+        final isCompact = screenWidth < 350;
+
+        // Responsive dimensions
+        final cardPadding = isHighResolution ? 20.0 : 16.0;
+        final iconSize = isHighResolution ? 32.0 : 28.0;
+        final titleFontSize = isHighResolution ? 16.0 : 14.0;
+        final subtitleFontSize = isHighResolution ? 13.0 : 12.0;
+        final buttonFontSize = isHighResolution ? 13.0 : 12.0;
+        final spacingBetween = isCompact ? 8.0 : 12.0;
+
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(cardPadding),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.purple.shade50, Colors.indigo.shade50],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.purple.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.purple.shade100.withOpacity(0.3),
+                offset: const Offset(0, 2),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // For very compact screens, use vertical layout
+              if (isCompact) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.mic,
+                      color: Colors.purple.shade600,
+                      size: iconSize,
+                    ),
+                    SizedBox(width: spacingBetween),
+                    Text(
+                      'Voice Booking',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple.shade700,
+                        fontSize: titleFontSize,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: spacingBetween),
+                Text(
+                  'Create bookings with speech recognition',
+                  style: GoogleFonts.poppins(
+                    fontSize: subtitleFontSize,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: spacingBetween),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showVoiceBookingDialog(provider),
+                    icon: Icon(
+                      Icons.mic_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      'Start Voice Booking',
+                      style: GoogleFonts.poppins(
+                        fontSize: buttonFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple.shade600,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                  ),
+                ),
+              ]
+              // For normal screens, use horizontal layout
+              else ...[
+                Row(
+                  children: [
+                    Icon(
+                      Icons.mic,
+                      color: Colors.purple.shade600,
+                      size: iconSize,
+                    ),
+                    SizedBox(width: spacingBetween),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Voice Booking Available',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade700,
+                              fontSize: titleFontSize,
+                            ),
+                          ),
+                          Text(
+                            'Create bookings with speech recognition',
+                            style: GoogleFonts.poppins(
+                              fontSize: subtitleFontSize,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: spacingBetween),
+                    ElevatedButton.icon(
+                      onPressed: () => _showVoiceBookingDialog(provider),
+                      icon: Icon(
+                        Icons.mic_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      label: Text(
+                        'Start Voice',
+                        style: GoogleFonts.poppins(
+                          fontSize: buttonFontSize,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple.shade600,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Android Fix: Separate StatefulWidget for guest dialog to prevent state conflicts
+class _AddGuestDialog extends StatefulWidget {
+  @override
+  _AddGuestDialogState createState() => _AddGuestDialogState();
+}
+
+class _AddGuestDialogState extends State<_AddGuestDialog> {
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  void _handleSubmit() {
+    if (_nameController.text.trim().isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter a guest name';
+      });
+      return;
+    }
+
+    final newGuest = Guest(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim().isEmpty
+          ? null
+          : _emailController.text.trim(),
+      phone: _phoneController.text.trim().isEmpty
+          ? null
+          : _phoneController.text.trim(),
+    );
+
+    Navigator.pop(context, newGuest);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Text(
+        'Add Guest',
+        style: GoogleFonts.poppins(
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+          color: const Color(0xFF1E3A8A),
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_errorMessage != null)
+            Container(
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF43F5E).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _errorMessage!,
+                style: GoogleFonts.poppins(
+                  color: const Color(0xFFF43F5E),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          TextField(
+            controller: _nameController,
+            style: GoogleFonts.poppins(),
+            decoration: InputDecoration(
+              labelText: 'Name *',
+              labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFF14B8A6)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(
+                  color: Color(0xFF14B8A6),
+                  width: 2,
+                ),
+              ),
+            ),
+            onChanged: (value) {
+              if (_errorMessage != null) {
+                setState(() {
+                  _errorMessage = null;
+                });
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _emailController,
+            style: GoogleFonts.poppins(),
+            decoration: InputDecoration(
+              labelText: 'Email (Optional)',
+              labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFF14B8A6)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(
+                  color: Color(0xFF14B8A6),
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _phoneController,
+            style: GoogleFonts.poppins(),
+            decoration: InputDecoration(
+              labelText: 'Phone (Optional)',
+              labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFF14B8A6)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(
+                  color: Color(0xFF14B8A6),
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            'Cancel',
+            style: GoogleFonts.poppins(color: Colors.grey[600]),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: _handleSubmit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF14B8A6),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: Text(
+            'Add',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
   }
 }

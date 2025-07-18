@@ -97,16 +97,6 @@ class _SmartBookingAssistantState extends State<SmartBookingAssistant> {
                 .first
           : null;
 
-      if (guest == null) {
-        guest = Guest(
-          id: 'guest-${DateTime.now().millisecondsSinceEpoch}',
-          name: suggestion.guestName,
-          email: suggestion.guestEmail ?? '',
-          phone: '',
-        );
-        await provider.addGuest(guest);
-      }
-
       // Find suitable room
       Room? room;
       if (suggestion.roomType != null) {
@@ -140,13 +130,6 @@ class _SmartBookingAssistantState extends State<SmartBookingAssistant> {
                 .where((r) => r.status.toLowerCase() == 'available')
                 .first
           : null;
-
-      if (room == null) {
-        setState(() {
-          _errorMessage = 'No available rooms found';
-        });
-        return;
-      }
 
       // Calculate booking cost
       final nights = suggestion.checkOutDate

@@ -552,7 +552,7 @@ class _RoomManagementPageState extends State<RoomManagementPage>
           Text(
             value,
             style: GoogleFonts.poppins(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF1E293B),
             ),
@@ -561,7 +561,7 @@ class _RoomManagementPageState extends State<RoomManagementPage>
           Text(
             title,
             style: GoogleFonts.poppins(
-              fontSize: 12,
+              fontSize: 10,
               color: const Color(0xFF64748B),
             ),
             textAlign: TextAlign.center,

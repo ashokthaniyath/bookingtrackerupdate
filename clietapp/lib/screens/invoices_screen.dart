@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../providers/resort_data_provider.dart';
 import '../models/booking.dart';
 import '../models/payment.dart';
-import '../services/pdf_generation_service.dart';
+import '../services/pdf_generation_service_stub.dart' as PDFGenerationService;
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -19,7 +17,6 @@ class _InvoicesScreenState extends State<InvoicesScreen>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  String _paymentFilter = 'All'; // Payment filter state
 
   @override
   void initState() {
@@ -247,7 +244,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
           Text(
             value,
             style: GoogleFonts.poppins(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF1E293B),
             ),
@@ -775,52 +772,18 @@ class _InvoicesScreenState extends State<InvoicesScreen>
         date: DateTime.now(),
       );
 
-      // Generate PDF bytes
-      final pdfBytes = await PDFGenerationService.generateInvoicePDF(
-        booking: booking,
-        payment: payment,
-      );
-
-      // Save PDF to device
-      final fileName =
-          'Invoice_${booking.guest.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final savedPath = await PDFGenerationService.savePDFToFile(
-        pdfBytes,
-        fileName,
+      // Generate and save PDF with enhanced Android support
+      await PDFGenerationService.PDFGenerationService.generateInvoicePDF(
+        booking,
+        payment,
       );
 
       if (mounted) {
-        // Different messages for web vs desktop/mobile
-        final isWebPlatform = kIsWeb;
-        final primaryMessage = isWebPlatform
-            ? 'PDF Invoice downloaded successfully! ✓'
-            : 'PDF Invoice generated successfully! ✓';
-        final secondaryMessage = isWebPlatform
-            ? 'Check your Downloads folder'
-            : 'Saved to: ${savedPath.split('/').last}';
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  primaryMessage,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  secondaryMessage,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+            content: Text(
+              'PDF processed',
+              style: GoogleFonts.poppins(color: Colors.white),
             ),
             backgroundColor: const Color(0xFF14B8A6),
             duration: const Duration(seconds: 4),

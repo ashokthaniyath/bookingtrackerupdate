@@ -7,7 +7,7 @@ import '../utils/profile_settings.dart';
 
 import 'package:flutter/services.dart';
 import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart' as launcher;
+// import 'package:url_launcher/url_launcher.dart' as launcher; // Temporarily disabled
 import 'package:provider/provider.dart';
 import '../utils/theme_notifier.dart';
 import '../providers/resort_data_provider.dart';
@@ -220,19 +220,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _contactSupport() async {
-    final uri = Uri(
-      scheme: 'mailto',
-      path: 'support@lakshadweep.com',
-      query: 'subject=Support Request',
-    );
-    if (await launcher.canLaunchUrl(uri)) {
-      await launcher.launchUrl(uri);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open email app.')),
-        );
-      }
+    // URL launcher functionality temporarily disabled
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Support contact feature temporarily disabled.'),
+        ),
+      );
     }
   }
 
